@@ -1,2 +1,1 @@
-mod responses;
-mod queue;
+pub mod entity;

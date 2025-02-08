@@ -1,17 +1,22 @@
+#![forbid(unsafe_code)]
+
+#[macro_use]
+extern crate log;
+
+mod database;
 mod seed;
 
 use anyhow::Result;
+use database::PostgresDatabase;
 
 #[actix_web::main]
 async fn main() -> Result<()> {
-    use sqlx::postgres::PgPoolOptions;
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect("postgres://postgres:password@localhost/dbname")
-        .await?;
+    pretty_env_logger::init();
     
+    let pg_pool = PostgresDatabase::new().await?;
+
     let server = actix_web::HttpServer::new(move || {
-        actix_web::App::new().app_data(actix_web::web::Data::new(pool.clone()))
+        actix_web::App::new().app_data(actix_web::web::Data::new(pg_pool.clone()))
     })
     .bind(("127.0.0.1", 8080))?
     .run();
@@ -20,4 +25,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-
