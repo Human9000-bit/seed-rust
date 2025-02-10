@@ -20,7 +20,7 @@ pub struct Message {
 
 #[derive(Serialize, Deserialize)]
 pub struct OutcomeMessage {
-    pub none: usize,
+    pub nonce: usize,
     #[serde(rename = "queueId")]
     pub chat_id: String,
     pub signature: String,
