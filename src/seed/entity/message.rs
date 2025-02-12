@@ -1,9 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+/// Incoming message struct
 #[derive(Serialize, Deserialize)]
 pub struct IncomeMessage {
+    /// Response type
     #[serde(rename = "type")]
     pub rtype: String,
+    /// The message
     pub message: Message,
 }
 
@@ -18,6 +21,7 @@ pub struct Message {
     pub content_iv: String,
 }
 
+/// Outcoming message struct
 #[derive(Serialize, Deserialize)]
 pub struct OutcomeMessage {
     pub nonce: usize,
