@@ -5,6 +5,7 @@ extern crate log;
 
 mod database;
 mod seed;
+mod traits;
 
 use anyhow::Result;
 use database::PostgresDatabase;
