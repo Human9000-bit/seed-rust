@@ -17,17 +17,17 @@ use super::message::IncomeMessage;
 #[derive(Serialize, Deserialize)]
 pub struct SubscriptionRequest {
     #[serde(rename = "type")]
-    rtype: String,
+    pub rtype: String,
 
     #[serde(rename = "queueId")]
-    chat_id: String,
-
-    nonce: usize,
+    pub chat_id: String,
+    
+    pub nonce: usize,
 }
 
 /// A message received from a connected WebSocket client
 pub struct ConnectedMessage {
-    pub connection: WebSocketConnection,
+    pub connection: Arc<WebSocketConnection>,
     pub message: IncomeMessage,
 }
 
@@ -45,27 +45,26 @@ pub struct WebSocketManager {
 }
 
 /// Wraps both [Session] and [MessageStream] into one struct
+#[derive(Clone)]
 pub struct WebSocketConnection {
     pub id: Uuid,
-    pub session: Mutex<Session>,
-    pub messages: MessageStream,
+    pub session: Arc<Mutex<Session>>,
 }
 
 impl WebSocketConnection {
     /// Construct new [WebSocketConnection] from [HttpRequest] and [Payload]
     ///
     /// Think of it as calling [actix_ws::handle], but you get [WebSocketConnection]
-    fn new(
+    pub fn new(
         req: &HttpRequest,
         body: Payload,
-    ) -> std::result::Result<(HttpResponse, Self), actix_web::Error> {
-        let (response, session, messages) = actix_ws::handle(req, body)?;
+    ) -> std::result::Result<(HttpResponse, Self, MessageStream), actix_web::Error> {
+        let (response, session, stream) = actix_ws::handle(req, body)?;
         let wsconn = WebSocketConnection {
             id: Uuid::new_v4(),
-            session: Mutex::new(session),
-            messages,
+            session: Arc::new(Mutex::new(session)),
         };
-        Ok((response, wsconn))
+        Ok((response, wsconn, stream))
     }
 }
 
@@ -80,5 +79,15 @@ impl Eq for WebSocketConnection {}
 impl Hash for WebSocketConnection {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    fn send_and_sync<T: Send + Sync>() {}
+    fn websocket_manager_send_and_sync() {
+        send_and_sync::<WebSocketManager>();
     }
 }

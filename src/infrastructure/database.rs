@@ -75,25 +75,26 @@ impl PostgresDatabase {
     /// - Invalid sequence of nonces
     pub async fn insert_message(&self, message: IncomeMessage) -> Result<()> {
         // Decode base64 encoded chat ID from message
+        let message = message.message.unwrap();
         let chat_id = BASE64_STANDARD
-            .decode(message.message.chat_id)
+            .decode(message.chat_id)
             .inspect_err(|e| error!("invalid message: {e}"))?;
 
         // Decode base64 encoded signature using helper function
-        let signature = decode_base64(message.message.signature).await?;
+        let signature = decode_base64(message.signature).await?;
 
         // Start async fetch of last known nonce for this chat
         let last_nonce_future = self.get_last_nonce(chat_id.as_slice());
 
         // Parallel decode of content and initialization vector
-        let content = decode_base64(message.message.content).await?;
-        let content_iv = decode_base64(message.message.content_iv).await?;
+        let content = decode_base64(message.content).await?;
+        let content_iv = decode_base64(message.content_iv).await?;
 
         // Await completion of nonce query
         let last_nonce = last_nonce_future.await?;
 
         // Validate sequential nonce increment
-        if message.message.nonce != last_nonce + 1 {
+        if message.nonce != last_nonce + 1 {
             return Err(anyhow!(SeedError::InvalidNonce));
         }
 

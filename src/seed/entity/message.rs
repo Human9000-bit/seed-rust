@@ -7,7 +7,7 @@ pub struct IncomeMessage {
     #[serde(rename = "type")]
     pub rtype: String,
     /// The message
-    pub message: Message,
+    pub message: Option<Message>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -37,25 +37,26 @@ impl From<Message> for IncomeMessage {
     fn from(message: Message) -> Self {
         IncomeMessage {
             rtype: "message".to_string(),
-            message,
+            message: Some(message),
         }
     }
 }
 
 impl From<(String, Message)> for IncomeMessage {
     fn from((rtype, message): (String, Message)) -> Self {
-        IncomeMessage { rtype, message }
+        IncomeMessage { rtype, message: Some(message) }
     }
 }
 
 impl From<IncomeMessage> for OutcomeMessage {
     fn from(income: IncomeMessage) -> Self {
+        let message = income.message.unwrap();
         Self {
-            nonce: income.message.nonce,
-            chat_id: income.message.chat_id,
-            signature: income.message.signature,
-            content: income.message.content,
-            content_iv: income.message.content_iv,
+            nonce: message.nonce,
+            chat_id: message.chat_id,
+            signature: message.signature,
+            content: message.content,
+            content_iv: message.content_iv,
         }
     }
 }

@@ -124,11 +124,10 @@ impl<T: MessagesRepository> WebsocketRepository for WebSocketUseCase<T> {
         }
     }
 
-    async fn disconnect(&self, ws: Arc<Mutex<WebSocketManager>>, connection: WebSocketConnection) {
+    async fn disconnect(&self, ws: Arc<Mutex<WebSocketManager>>, connection: Arc<WebSocketConnection>) {
         let _ = connection.session.lock().await.to_owned().close(None).await;
 
         let ws_unlocked = ws.lock();
-        let connection = Arc::new(connection);
 
         let mut ws_unlocked = ws_unlocked.await;
 
