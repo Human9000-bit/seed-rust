@@ -1,3 +1,4 @@
+use crate::base64::{decode_base64, encode_base64};
 use crate::seed::entity::message::{IncomeMessage, OutcomeMessage};
 use crate::seed::error::SeedError;
 use anyhow::{anyhow, Result};
@@ -68,7 +69,7 @@ impl PostgresDatabase {
     ///
     /// # Errors
     /// Returns errors for:
-    /// - Base64 decoding failures 
+    /// - Base64 decoding failures
     /// - Nonce validation failures
     /// - Database insertion errors
     /// - Invalid sequence of nonces
@@ -125,7 +126,7 @@ impl PostgresDatabase {
     ///
     /// # Arguments
     /// * `chat_id` - Binary chat identifier to fetch messages for
-    /// * `nonce` - Starting nonce value for history fetch 
+    /// * `nonce` - Starting nonce value for history fetch
     /// * `amount` - Maximum number of messages to retrieve
     ///
     /// # Returns
@@ -133,7 +134,7 @@ impl PostgresDatabase {
     ///
     /// # Errors
     /// - Database query failures
-    /// - Data conversion errors 
+    /// - Data conversion errors
     pub async fn fetch_history(
         &self,
         chat_id: &[u8],
@@ -229,36 +230,6 @@ impl PostgresDatabase {
             None => Err(anyhow!(DatabaseError::NotFound)),
         }
     }
-}
-
-/// Decodes a base64 encoded string into raw bytes
-///
-/// # Arguments
-/// * `str` - Base64 encoded string to decode
-///
-/// # Returns
-/// * `Result<Vec<u8>>` - Decoded byte vector
-///
-/// # Errors
-/// Returns errors for:
-/// - Invalid base64 encoding
-async fn decode_base64(str: String) -> Result<Vec<u8>> {
-    let decoded = BASE64_STANDARD
-        .decode(str)
-        .inspect_err(|e| error!("failed to decode: {e}"))?;
-
-    Ok(decoded)
-}
-
-/// Encodes a byte slice into a base64 string
-///
-/// # Arguments
-/// * `slice` - Byte slice to encode
-///
-/// # Returns
-/// * `String` - Base64 encoded string
-async fn encode_base64(slice: &[u8]) -> String {
-    BASE64_STANDARD.encode(slice)
 }
 
 /// SQLx compatible wrapper for byte sequence parameters

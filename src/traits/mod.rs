@@ -1,2 +1,2 @@
-mod message;
-mod websocket;
+pub mod message;
+pub mod websocket;
