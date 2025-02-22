@@ -24,6 +24,7 @@ use use_case::{
 #[actix_web::main]
 async fn main() -> Result<()> {
     pretty_env_logger::init();
+    let port = std::env::var("PORT").unwrap_or("8080".to_string()).parse::<u16>().unwrap();
 
     let pg_pool = PostgresDatabase::new().await?;
 
@@ -39,7 +40,7 @@ async fn main() -> Result<()> {
             .app_data(web::Data::new(websocket_manager.clone()))
             .service(accept_websocket_connection)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("127.0.0.1", port))?
     .run();
 
     server.await?;
