@@ -12,6 +12,7 @@ use crate::{
 
 const MESSAGES_LIMIT: usize = 100;
 
+#[derive(Clone, Copy)]
 pub struct MessagesUseCase<T: MessagesDB> {
     pub db: T,
 }
@@ -155,7 +156,7 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
         true
     }
 
-    async fn insert_message(&self, message: entity::message::OutcomeMessage) -> Result<()> {
+    async fn insert_message(&self, message: entity::message::IncomeMessage) -> Result<()> {
         self.db.insert_message(message).await?;
         Ok(())
     }

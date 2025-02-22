@@ -1,6 +1,7 @@
 use crate::base64::{decode_base64, encode_base64};
 use crate::seed::entity::message::{IncomeMessage, OutcomeMessage};
 use crate::seed::error::SeedError;
+use crate::traits::message::MessagesDB;
 use anyhow::{anyhow, Result};
 use base64::prelude::*;
 use sqlx::postgres::PgPoolOptions;
@@ -59,6 +60,40 @@ impl PostgresDatabase {
         Ok(Self { db: pool })
     }
 
+    /// Retrieves the highest nonce value for a given chat ID from the database
+    ///
+    /// # Arguments
+    /// * `chat_id` - Binary chat identifier to search for
+    ///
+    /// # Returns
+    /// * `Result<usize>` - Highest known nonce or 0 if none exist
+    ///
+    /// # Errors
+    /// Returns errors for:
+    /// - Database query failures
+    /// - Missing chat history (NotFound)
+    async fn get_last_nonce(&self, chat_id: &[u8]) -> Result<usize> {
+        let chat_id = ByteSeq(chat_id);
+
+        // Query for maximum nonce using parameterized SQL
+        let last_nonce = sqlx::query!(
+            r#"
+                    SELECT MAX(nonce)
+                    FROM messages
+                    WHERE chat_id = $1"#,
+            chat_id as ByteSeq
+        );
+
+        // Execute query and process results
+        let last_nonce = last_nonce.fetch_one(&self.db).await?;
+        match last_nonce.max {
+            Some(int) => Ok(int as usize),
+            None => Err(anyhow!(DatabaseError::NotFound)),
+        }
+    }
+}
+
+impl MessagesDB for PostgresDatabase {
     /// Inserts a new message into the database after validating and processing fields
     ///
     /// # Arguments
@@ -73,7 +108,7 @@ impl PostgresDatabase {
     /// - Nonce validation failures
     /// - Database insertion errors
     /// - Invalid sequence of nonces
-    pub async fn insert_message(&self, message: IncomeMessage) -> Result<()> {
+    async fn insert_message(&self, message: IncomeMessage) -> Result<()> {
         // Decode base64 encoded chat ID from message
         let message = message.message.unwrap();
         let chat_id = BASE64_STANDARD
@@ -136,7 +171,7 @@ impl PostgresDatabase {
     /// # Errors
     /// - Database query failures
     /// - Data conversion errors
-    pub async fn fetch_history(
+    async fn fetch_history(
         &self,
         chat_id: &[u8],
         nonce: usize,
@@ -198,38 +233,6 @@ impl PostgresDatabase {
         }
 
         Ok(messages)
-    }
-
-    /// Retrieves the highest nonce value for a given chat ID from the database
-    ///
-    /// # Arguments
-    /// * `chat_id` - Binary chat identifier to search for
-    ///
-    /// # Returns
-    /// * `Result<usize>` - Highest known nonce or 0 if none exist
-    ///
-    /// # Errors
-    /// Returns errors for:
-    /// - Database query failures
-    /// - Missing chat history (NotFound)
-    async fn get_last_nonce(&self, chat_id: &[u8]) -> Result<usize> {
-        let chat_id = ByteSeq(chat_id);
-
-        // Query for maximum nonce using parameterized SQL
-        let last_nonce = sqlx::query!(
-            r#"
-                SELECT MAX(nonce)
-                FROM messages
-                WHERE chat_id = $1"#,
-            chat_id as ByteSeq
-        );
-
-        // Execute query and process results
-        let last_nonce = last_nonce.fetch_one(&self.db).await?;
-        match last_nonce.max {
-            Some(int) => Ok(int as usize),
-            None => Err(anyhow!(DatabaseError::NotFound)),
-        }
     }
 }
 

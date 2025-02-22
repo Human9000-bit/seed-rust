@@ -10,6 +10,7 @@ use crate::{
     traits::{message::MessagesRepository, websocket::WebsocketRepository},
 };
 
+#[derive(Clone, Copy)]
 pub struct WebSocketUseCase<T: MessagesRepository> {
     messages_repository: T,
 }
@@ -32,7 +33,7 @@ impl<T: MessagesRepository> WebSocketUseCase<T> {
         for event in ws.message_queues.get(&chat_id).unwrap().1.iter() {
             let _ = self
                 .messages_repository
-                .insert_message(event.message.into())
+                .insert_message(event.message)
                 .await
                 .inspect_err(|e| error!("Error inserting message: {e}"));
         }

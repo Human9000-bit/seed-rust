@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use actix_web::{web::Payload, HttpRequest};
 use actix_ws::Message;
 
 use futures::lock::Mutex;
@@ -19,18 +18,14 @@ use crate::{
     use_case::{messages::MessagesUseCase, websocket::WebSocketUseCase},
 };
 
-async fn handle_websocket_connection<DB: MessagesDB, MR: MessagesRepository>(
-    req: &HttpRequest,
-    body: Payload,
-    messages_use_case: MessagesUseCase<DB>,
-    websocket_use_case: WebSocketUseCase<MR>,
-    ws: WebSocketManager,
+pub async fn handle_websocket_connection<DB: MessagesDB, MR: MessagesRepository>(
+    connection: WebSocketConnection,
+    stream: &mut actix_ws::MessageStream,
+    messages_use_case: &MessagesUseCase<DB>,
+    websocket_use_case: &WebSocketUseCase<MR>,
+    ws: &WebSocketManager,
 ) {
-    let (_, connection, mut stream) = WebSocketConnection::new(req, body)
-        .inspect_err(|e| log::error!("Error connecting to websocket: {e}"))
-        .unwrap();
-
-    let ws = Arc::new(Mutex::new(ws));
+    let ws = Arc::new(Mutex::new(ws.clone()));
     let connection = Arc::new(connection);
 
     while let Some(Ok(msg)) = stream.recv().await {
@@ -76,7 +71,7 @@ async fn handle_websocket_connection<DB: MessagesDB, MR: MessagesRepository>(
                         log::info!("There is no subscribers to receive message in the queue");
                         if let Err(err) = messages_use_case
                             .db
-                            .insert_message(message.message.into())
+                            .insert_message(message.message)
                             .await
                         {
                             log::info!("Error inserting message into database: {}", err);
@@ -110,12 +105,12 @@ async fn handle_websocket_connection<DB: MessagesDB, MR: MessagesRepository>(
                         .handle_subscribe(ws.clone(), connection.clone(), &message_inner.chat_id)
                         .await;
                     let _ = messages_use_case.status_response(&connection, true).await;
-                    let _ = messages_use_case.unread_message_response(
-                        &connection,
-                        &chat_id,
-                        message_inner.nonce,
-                    ).await;
-                    let _ = messages_use_case.wait_event_response(&connection, &message_inner.chat_id).await;
+                    let _ = messages_use_case
+                        .unread_message_response(&connection, &chat_id, message_inner.nonce)
+                        .await;
+                    let _ = messages_use_case
+                        .wait_event_response(&connection, &message_inner.chat_id)
+                        .await;
                 }
                 "unsubscribe" => {
                     let message_inner = match incoming.message {
@@ -127,11 +122,9 @@ async fn handle_websocket_connection<DB: MessagesDB, MR: MessagesRepository>(
                         }
                     };
 
-                    websocket_use_case.handle_unsubscribe(
-                        ws.clone(),
-                        connection.clone(),
-                        &message_inner.chat_id,
-                    ).await;
+                    websocket_use_case
+                        .handle_unsubscribe(ws.clone(), connection.clone(), &message_inner.chat_id)
+                        .await;
                     let _ = messages_use_case.status_response(&connection, true).await;
                 }
                 _ => {

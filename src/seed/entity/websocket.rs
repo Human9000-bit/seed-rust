@@ -32,6 +32,7 @@ pub struct ConnectedMessage {
 }
 
 /// Manages WebSocket connections and message routing
+#[derive(Clone)]
 pub struct WebSocketManager {
     pub connections: HashMap<Arc<WebSocketConnection>, HashSet<String>>,
     pub chats: HashMap<String, HashSet<WebSocketConnection>>,
@@ -42,6 +43,16 @@ pub struct WebSocketManager {
             flume::Receiver<ConnectedMessage>,
         ),
     >,
+}
+
+impl WebSocketManager {
+    pub fn new() -> Self {
+        Self {
+            connections: HashMap::new(),
+            chats: HashMap::new(),
+            message_queues: HashMap::new(),
+        }
+    }
 }
 
 /// Wraps both [Session] and [MessageStream] into one struct
