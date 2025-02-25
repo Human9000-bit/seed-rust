@@ -35,17 +35,17 @@ impl PostgresDatabase {
     pub async fn new() -> Result<Self> {
         // Try to get database username from environment, fall back to default if unset
         let db_user = var("DB_USER")
-            .inspect_err(|_| warn!("DB_USER environment is unset, using default..."))
+            .inspect_err(|_| warn!("DB_USER environment variable is unset, using default..."))
             .unwrap_or("postgres".to_string());
 
         // Try to get database password from environment, fall back to default if unset
         let db_password = var("DB_PASSWORD")
-            .inspect_err(|_| warn!("DB_PASSWORD environment is unset, using default..."))
+            .inspect_err(|_| warn!("DB_PASSWORD environment variable is unset, using default..."))
             .unwrap_or("mysecretpassword".to_string());
 
         // Try to get database name from environment, fall back to default if unset
         let db_name = var("DB_NAME")
-            .inspect_err(|_| warn!("DB_NAME environment is unset, using default..."))
+            .inspect_err(|_| warn!("DB_NAME environment variable is unset, using default..."))
             .unwrap_or("seed-rust".to_string());
 
         // Construct the Postgres connection URL
