@@ -12,6 +12,7 @@ mod infrastructure;
 mod seed;
 mod traits;
 mod use_case;
+mod tls;
 
 use actix::Actor;
 use actix::Addr;
@@ -28,6 +29,9 @@ use use_case::messages::MessagesUseCase;
 #[actix_web::main]
 async fn main() -> Result<()> {
     pretty_env_logger::init();
+    
+    let tls_config = tls::load_rustls_config()?;
+    
     let port = std::env::var("PORT")
         .unwrap_or("8080".to_string())
         .parse::<u16>()
@@ -48,7 +52,7 @@ async fn main() -> Result<()> {
             .app_data(websocket_actor.clone())
             .service(accept_websocket_connection)
     })
-    .bind(("127.0.0.1", port))?
+    .bind_rustls_0_23(format!("127.0.0.1:{port}"), tls_config)?
     .run();
 
     server.await?;
