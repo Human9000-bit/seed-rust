@@ -17,7 +17,6 @@ sqlx = { version = "0.8.2", features = [
     "sqlx-postgres",
     "postgres",
     "runtime-tokio",
-    "tls-rustls",
 ] }
 anyhow = { version = "1.0.89", features = ["backtrace", "std"] }
 base64 = "0.22.1"
