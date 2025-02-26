@@ -12,7 +12,6 @@ codegen-units = 1
 [dependencies]
 actix-web = { version = "4.9.0", features = ["rustls-0_23"] }
 actix-ws = "0.3.0"
-reqwest = "0.12.7"
 sqlx = { version = "0.8.2", features = [
     "sqlx-postgres",
     "postgres",
@@ -31,4 +30,3 @@ uuid = { version = "1.13.1", features = ["v4"] }
 actix = "0.13.5"
 rustls-pemfile = "2.2.0"
 rustls = "0.23"
-actix-tls = "3.4.0"
