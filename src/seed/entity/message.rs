@@ -44,7 +44,10 @@ impl From<Message> for IncomeMessage {
 
 impl From<(String, Message)> for IncomeMessage {
     fn from((rtype, message): (String, Message)) -> Self {
-        IncomeMessage { rtype, message: Some(message) }
+        IncomeMessage {
+            rtype,
+            message: Some(message),
+        }
     }
 }
 

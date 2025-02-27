@@ -1,4 +1,4 @@
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 
 pub async fn encode_base64(input: &[u8]) -> String {
     general_purpose::STANDARD.encode(input)

@@ -6,7 +6,7 @@ use std::{
 
 use futures::lock::Mutex;
 
-use actix_web::{web::Payload, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web::Payload};
 use actix_ws::{MessageStream, Session};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -21,7 +21,7 @@ pub struct SubscriptionRequest {
 
     #[serde(rename = "queueId")]
     pub chat_id: String,
-    
+
     pub nonce: usize,
 }
 
@@ -96,7 +96,7 @@ impl Hash for WebSocketConnection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     fn send_and_sync<T: Send + Sync>() {}
     fn websocket_manager_send_and_sync() {
         send_and_sync::<WebSocketManager>();

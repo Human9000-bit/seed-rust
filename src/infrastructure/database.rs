@@ -2,10 +2,10 @@ use crate::base64::{decode_base64, encode_base64};
 use crate::seed::entity::message::{IncomeMessage, OutcomeMessage};
 use crate::seed::error::SeedError;
 use crate::traits::message::MessagesDB;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use base64::prelude::*;
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{query, Pool, Postgres};
+use sqlx::{Pool, Postgres, query};
 use std::env::var;
 use thiserror::Error;
 

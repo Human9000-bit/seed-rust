@@ -10,7 +10,7 @@ pub fn load_rustls_config() -> Result<rustls::ServerConfig, anyhow::Error> {
     let cert_chain = certs(&mut cert_file).collect::<Result<Vec<_>, _>>()?;
 
     let mut keys = pkcs8_private_keys(&mut key_file).collect::<Result<Vec<_>, _>>()?;
-    
+
     let key = keys.remove(0);
 
     let config = rustls::ServerConfig::builder()

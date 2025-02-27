@@ -10,9 +10,9 @@ extern crate pretty_env_logger;
 mod base64;
 mod infrastructure;
 mod seed;
+mod tls;
 mod traits;
 mod use_case;
-mod tls;
 
 use actix::Actor;
 use actix::Addr;
@@ -29,9 +29,9 @@ use use_case::messages::MessagesUseCase;
 #[actix_web::main]
 async fn main() -> Result<()> {
     pretty_env_logger::init();
-    
+
     let tls_config = tls::load_rustls_config()?;
-    
+
     let port = std::env::var("PORT")
         .unwrap_or("8080".to_string())
         .parse::<u16>()
@@ -70,16 +70,16 @@ async fn accept_websocket_connection(
 ) -> actix_web::Result<HttpResponse> {
     let (response, conn, mut stream) = WebSocketConnection::new(&req, payload)?;
     let (tx, rx) = flume::unbounded();
-    
+
     while let Some(Ok(msg)) = stream.next().await {
         if tx.send(msg).is_err() {
             break;
         }
-    };
-    
+    }
+
     let message = WebSocketActorMessage {
         connection: conn,
-        stream: rx
+        stream: rx,
     };
     websocket_actor
         .send(message)
