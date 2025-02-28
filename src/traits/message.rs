@@ -32,13 +32,13 @@ pub trait MessagesRepository {
     /// Validates if a message meets required criteria
     async fn is_valid_message(&self, message: entity::message::OutcomeMessage) -> bool;
 
-    async fn insert_message(&self, message: entity::message::IncomeMessage) -> Result<()>;
+    async fn insert_message(&self, message: entity::message::Message) -> Result<()>;
 }
 
 /// Database interface for message persistence
 pub trait MessagesDB {
     /// Inserts a new message into the database
-    async fn insert_message(&self, message: entity::message::IncomeMessage) -> Result<()>;
+    async fn insert_message(&self, message: entity::message::Message) -> Result<()>;
 
     /// Retrieves message history for a chat with pagination
     ///

@@ -156,7 +156,7 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
         true
     }
 
-    async fn insert_message(&self, message: entity::message::IncomeMessage) -> Result<()> {
+    async fn insert_message(&self, message: entity::message::Message) -> Result<()> {
         self.db.insert_message(message).await?;
         Ok(())
     }

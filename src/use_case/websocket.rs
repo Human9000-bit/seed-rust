@@ -4,7 +4,7 @@ use futures::lock::Mutex;
 
 use crate::{
     seed::entity::{
-        message::OutcomeMessage,
+        message::{IncomeMessage, OutcomeMessage},
         websocket::{WebSocketConnection, WebSocketManager},
     },
     traits::{message::MessagesRepository, websocket::WebsocketRepository},
@@ -31,9 +31,15 @@ impl<T: MessagesRepository> WebSocketUseCase<T> {
             .insert(chat_id.clone(), (sender, reciever.clone()));
 
         for event in ws.message_queues.get(&chat_id).unwrap().1.iter() {
+            let message = match event.message {
+                IncomeMessage::Send(msg) => msg,
+                IncomeMessage::Subscribe(msg) => msg,
+                IncomeMessage::Unsubscribe(msg) => msg,
+                _ => continue,
+            };
             let _ = self
                 .messages_repository
-                .insert_message(event.message)
+                .insert_message(message)
                 .await
                 .inspect_err(|e| error!("Error inserting message: {e}"));
         }
@@ -108,7 +114,7 @@ impl<T: MessagesRepository> WebsocketRepository for WebSocketUseCase<T> {
         ws: Arc<Mutex<WebSocketManager>>,
         message: crate::seed::entity::message::IncomeMessage,
     ) {
-        let message: OutcomeMessage = OutcomeMessage::from(message);
+        let message: OutcomeMessage = message.into();
 
         let ws = ws.lock().await;
 

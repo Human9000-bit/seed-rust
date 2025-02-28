@@ -1,5 +1,5 @@
 use crate::base64::{decode_base64, encode_base64};
-use crate::seed::entity::message::{IncomeMessage, OutcomeMessage};
+use crate::seed::entity::message::{self, OutcomeMessage};
 use crate::seed::error::SeedError;
 use crate::traits::message::MessagesDB;
 use anyhow::{Result, anyhow};
@@ -108,9 +108,8 @@ impl MessagesDB for PostgresDatabase {
     /// - Nonce validation failures
     /// - Database insertion errors
     /// - Invalid sequence of nonces
-    async fn insert_message(&self, message: IncomeMessage) -> Result<()> {
+    async fn insert_message(&self, message: message::Message) -> Result<()> {
         // Decode base64 encoded chat ID from message
-        let message = message.message.unwrap();
         let chat_id = BASE64_STANDARD
             .decode(message.chat_id)
             .inspect_err(|e| error!("invalid message: {e}"))?;
