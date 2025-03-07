@@ -1,9 +1,6 @@
-use std::{ops::ControlFlow, sync::Arc};
-
-use actix::{Actor, Context, Handler, Message as ActixMessage, ResponseFuture};
 use actix_ws::Message;
-
-use futures::lock::Mutex;
+use futures::{StreamExt, lock::Mutex};
+use std::{ops::ControlFlow, sync::Arc};
 
 use crate::{
     base64::decode_base64,
@@ -20,172 +17,152 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct WebSocketActor<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> {
-    manager: WebSocketManager,
+pub struct WebSocketService<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> {
+    manager: Arc<Mutex<WebSocketManager>>,
     websocket_use_case: WebSocketUseCase<MR>,
     messages_use_case: MessagesUseCase<DB>,
 }
 
-impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketActor<MR, DB> {
+impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR, DB> {
     pub fn new(
         manager: WebSocketManager,
         websocket_use_case: WebSocketUseCase<MR>,
         messages_use_case: MessagesUseCase<DB>,
     ) -> Self {
         Self {
-            manager,
+            manager: Arc::new(Mutex::new(manager)),
             websocket_use_case,
             messages_use_case,
         }
     }
-}
 
-impl<MR: MessagesRepository + Clone + Unpin + 'static, DB: MessagesDB + Clone + Unpin + 'static>
-    Actor for WebSocketActor<MR, DB>
-{
-    type Context = Context<Self>;
-}
+    pub async fn handle_connection(
+        &self,
+        connection: WebSocketConnection,
+        mut stream: actix_ws::MessageStream,
+    ) {
+        let connection = Arc::new(connection);
+        let manager = self.manager.clone();
+        let websocket_use_case = self.websocket_use_case.clone();
+        let messages_use_case = self.messages_use_case.clone();
 
-impl<MR: MessagesRepository + Clone + Unpin + 'static, DB: MessagesDB + Clone + Unpin + 'static>
-    Handler<WebSocketActorMessage> for WebSocketActor<MR, DB>
-{
-    type Result = ResponseFuture<()>;
+        // Spawn a task to handle this connection
 
-    fn handle(&mut self, msg: WebSocketActorMessage, _ctx: &mut Self::Context) -> Self::Result {
-        let self_cloned = self.clone();
-        Box::pin(async move {
-            let ws = Arc::new(Mutex::new(self_cloned.manager.clone()));
-            let connection = Arc::new(msg.connection);
+        debug!(
+            "Starting to handle websocket messages for connection: {}",
+            connection.id
+        );
 
-            while let Ok(msg) = msg.stream.recv() {
-                if let Message::Text(text) = msg {
-                    let incoming: IncomeMessage = serde_json::from_str(&text).unwrap(); // TODO: proper error handling
-                    if let ControlFlow::Break(_) =
-                        match_message(&self_cloned, &ws, &connection, incoming).await
-                    {
-                        continue;
+        while let Some(Ok(msg)) = stream.next().await {
+            match msg {
+                Message::Text(text) => match serde_json::from_str::<IncomeMessage>(&text) {
+                    Ok(incoming) => {
+                        if let ControlFlow::Break(_) = Self::process_message(
+                            &manager,
+                            &connection,
+                            incoming,
+                            &websocket_use_case,
+                            &messages_use_case,
+                        )
+                        .await
+                        {
+                            break;
+                        }
                     }
+                    Err(err) => {
+                        log::error!("Failed to parse message: {}", err);
+                        let _ = messages_use_case.status_response(&connection, false).await;
+                    }
+                },
+                Message::Close(_) => {
+                    log::info!("WebSocket connection closed by client");
+                    break;
                 }
+                _ => {} // Handle other message types if needed
             }
-
-            self_cloned
-                .websocket_use_case
-                .disconnect(ws, connection)
-                .await;
-        })
-    }
-}
-
-async fn match_message<MR, DB>(
-    actor: &WebSocketActor<MR, DB>,
-    ws: &Arc<Mutex<WebSocketManager>>,
-    connection: &Arc<WebSocketConnection>,
-    incoming: IncomeMessage,
-) -> ControlFlow<()>
-where
-    MR: MessagesRepository + Clone,
-    DB: MessagesDB + Clone,
-{
-    match incoming.clone() {
-        IncomeMessage::Ping => {
-            let _ = actor
-                .messages_use_case
-                .status_response(connection, true)
-                .await;
         }
-        IncomeMessage::Send(msg) => {
-            if !actor
-                .messages_use_case
-                .is_valid_message(msg.clone().into())
-                .await
-            {
-                let _ = actor
-                    .messages_use_case
-                    .status_response(connection, false)
-                    .await;
-                return ControlFlow::Break(());
+
+        // Clean up on disconnect
+        websocket_use_case.disconnect(manager, connection).await;
+    }
+
+    async fn process_message(
+        manager: &Arc<Mutex<WebSocketManager>>,
+        connection: &Arc<WebSocketConnection>,
+        incoming: IncomeMessage,
+        websocket_use_case: &WebSocketUseCase<MR>,
+        messages_use_case: &MessagesUseCase<DB>,
+    ) -> ControlFlow<()> {
+        match incoming.clone() {
+            IncomeMessage::Ping => {
+                let _ = messages_use_case.status_response(connection, true).await;
             }
-
-            let message = entity::websocket::ConnectedMessage {
-                connection: connection.clone(),
-                message: incoming,
-            };
-
-            let mut ws_lock = ws.lock().await;
-
-            if ws_lock.message_queues.contains_key(&msg.chat_id) {
-                let _ = ws_lock
-                    .message_queues
-                    .get_mut(&msg.chat_id)
-                    .unwrap()
-                    .0
-                    .send(message);
-                log::info!("Message has been successfully added to the queue");
-            } else {
-                log::info!("There is no subscribers to receive message in the queue");
-                if let Err(err) = actor.messages_use_case.db.insert_message(msg).await {
-                    log::info!("Error inserting message into database: {}", err);
-                    let _ = actor
-                        .messages_use_case
-                        .status_response(connection, false)
-                        .await;
+            IncomeMessage::Send(msg) => {
+                if !messages_use_case.is_valid_message(msg.clone().into()).await {
+                    let _ = messages_use_case.status_response(connection, false).await;
                     return ControlFlow::Break(());
                 }
 
-                let _ = actor
-                    .messages_use_case
-                    .status_response(connection, true)
+                let message = entity::websocket::ConnectedMessage {
+                    connection: connection.clone(),
+                    message: incoming,
+                };
+
+                // Minimize lock time by checking condition first, then writing
+                let contains_key = {
+                    let manager_read = manager.lock().await;
+                    manager_read.message_queues.contains_key(&msg.chat_id)
+                };
+
+                if contains_key {
+                    let mut manager_write = manager.lock().await;
+                    if let Some(queue) = manager_write.message_queues.get_mut(&msg.chat_id) {
+                        let _ = queue.0.send(message);
+                        log::info!("Message has been successfully added to the queue");
+                    }
+                    drop(manager_write); // Explicitly release the lock
+
+                    let _ = messages_use_case.status_response(connection, true).await;
+                } else {
+                    log::info!("There is no subscribers to receive message in the queue");
+                    if let Err(err) = messages_use_case.db.insert_message(msg).await {
+                        log::info!("Error inserting message into database: {}", err);
+                        let _ = messages_use_case.status_response(connection, false).await;
+                        return ControlFlow::Break(());
+                    }
+
+                    let _ = messages_use_case.status_response(connection, true).await;
+                }
+            }
+            IncomeMessage::Subscribe(msg) => {
+                let chat_id = match decode_base64(msg.chat_id.clone()).await {
+                    Ok(chat_id) => chat_id,
+                    Err(err) => {
+                        log::error!("Error decoding chat ID: {}", err);
+                        let _ = messages_use_case.status_response(connection, false).await;
+                        return ControlFlow::Break(());
+                    }
+                };
+
+                websocket_use_case
+                    .handle_subscribe(manager.clone(), connection.clone(), &msg.chat_id)
+                    .await;
+                let _ = messages_use_case.status_response(connection, true).await;
+                let _ = messages_use_case
+                    .unread_message_response(connection, &chat_id, msg.nonce)
+                    .await;
+                let _ = messages_use_case
+                    .wait_event_response(connection, &msg.chat_id)
                     .await;
             }
+            IncomeMessage::Unsubscribe(msg) => {
+                websocket_use_case
+                    .handle_unsubscribe(manager.clone(), connection.clone(), &msg.chat_id)
+                    .await;
+                let _ = messages_use_case.status_response(connection, true).await;
+            }
+            IncomeMessage::None => {}
         }
-        IncomeMessage::Subscribe(msg) => {
-            let chat_id = match decode_base64(msg.chat_id.clone()).await {
-                Ok(chat_id) => chat_id,
-                Err(err) => {
-                    log::error!("Error decoding chat ID: {}", err);
-                    let _ = actor
-                        .messages_use_case
-                        .status_response(connection, false)
-                        .await;
-                    return ControlFlow::Break(());
-                }
-            };
-
-            actor
-                .websocket_use_case
-                .handle_subscribe(ws.clone(), connection.clone(), &msg.chat_id)
-                .await;
-            let _ = actor
-                .messages_use_case
-                .status_response(connection, true)
-                .await;
-            let _ = actor
-                .messages_use_case
-                .unread_message_response(connection, &chat_id, msg.nonce)
-                .await;
-            let _ = actor
-                .messages_use_case
-                .wait_event_response(connection, &msg.chat_id)
-                .await;
-        }
-        IncomeMessage::Unsubscribe(msg) => {
-            actor
-                .websocket_use_case
-                .handle_unsubscribe(ws.clone(), connection.clone(), &msg.chat_id)
-                .await;
-            let _ = actor
-                .messages_use_case
-                .status_response(connection, true)
-                .await;
-        }
-        IncomeMessage::None => {}
+        ControlFlow::Continue(())
     }
-    ControlFlow::Continue(())
-}
-
-#[derive(ActixMessage)]
-#[rtype(result = "()")]
-pub struct WebSocketActorMessage {
-    pub connection: WebSocketConnection,
-    pub stream: flume::Receiver<Message>,
 }

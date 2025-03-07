@@ -4,7 +4,7 @@ use crate::{
     base64::decode_base64,
     seed::entity::{
         self,
-        response::{WaitEventDetail, WaitEventResponse},
+        response::{SeedResponse, WaitEventDetail},
         websocket::WebSocketConnection,
     },
     traits::message::{MessagesDB, MessagesRepository},
@@ -29,13 +29,10 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
         connection: &crate::seed::entity::websocket::WebSocketConnection,
         chat_id: &str,
     ) -> Result<()> {
-        let outgoing = WaitEventResponse {
-            rtype: "event".to_string(),
-            event: WaitEventDetail {
-                rtype: "wait".to_string(),
-                chat_id: chat_id.to_string(),
-            },
-        };
+        let outgoing = SeedResponse::WaitEvent(WaitEventDetail {
+            rtype: "wait".to_string(),
+            chat_id: chat_id.to_string(),
+        });
 
         let mut session = connection.session.lock().await;
 
@@ -45,16 +42,13 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
 
     async fn new_event_response(
         &self,
-        connection: &crate::seed::entity::websocket::WebSocketConnection,
+        connection: &WebSocketConnection,
         message: crate::seed::entity::message::OutcomeMessage,
     ) -> Result<()> {
-        let outgoing = entity::response::NewEventResponse {
-            rtype: "event".to_string(),
-            event: entity::response::NewEventDetail {
-                rtype: "new".to_string(),
-                message: message.clone(),
-            },
-        };
+        let outgoing = SeedResponse::NewEvent(entity::response::NewEventDetail {
+            rtype: "new".to_string(),
+            message: message.clone(),
+        });
 
         let mut session = connection.session.lock().await;
 
@@ -63,15 +57,8 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
         Ok(())
     }
 
-    async fn status_response(
-        &self,
-        connection: &crate::seed::entity::websocket::WebSocketConnection,
-        status: bool,
-    ) -> Result<()> {
-        let outgoing = entity::response::StatusResponse {
-            rtype: "response".to_string(),
-            status,
-        };
+    async fn status_response(&self, connection: &WebSocketConnection, status: bool) -> Result<()> {
+        let outgoing = SeedResponse::Status(entity::response::StatusResponse { status });
 
         let mut session = connection.session.lock().await;
 

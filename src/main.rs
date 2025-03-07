@@ -14,15 +14,11 @@ mod tls;
 mod traits;
 mod use_case;
 
-use actix::Actor;
-use actix::Addr;
+use actix_web::web::Data;
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use anyhow::Result;
-use futures::StreamExt;
-use infrastructure::{
-    database::PostgresDatabase,
-    websocket::{WebSocketActor, WebSocketActorMessage},
-};
+use infrastructure::database::PostgresDatabase;
+use infrastructure::websocket::WebSocketService;
 use seed::entity::websocket::{WebSocketConnection, WebSocketManager};
 use use_case::messages::MessagesUseCase;
 
@@ -44,12 +40,16 @@ async fn main() -> Result<()> {
         use_case::websocket::WebSocketUseCase::new(messages_use_case.clone()).await;
     let websocket_manager = WebSocketManager::new();
 
-    let websocket_actor =
-        WebSocketActor::new(websocket_manager, websocket_use_case, messages_use_case).start();
+    // Replace actor with service
+    let websocket_service = infrastructure::websocket::WebSocketService::new(
+        websocket_manager, 
+        websocket_use_case, 
+        messages_use_case
+    );
 
     let server = actix_web::HttpServer::new(move || {
         actix_web::App::new()
-            .app_data(websocket_actor.clone())
+            .app_data(Data::new(websocket_service.clone()))
             .service(accept_websocket_connection)
     })
     .bind_rustls_0_23(format!("127.0.0.1:{port}"), tls_config)?
@@ -64,27 +64,15 @@ async fn main() -> Result<()> {
 async fn accept_websocket_connection(
     req: HttpRequest,
     payload: web::Payload,
-    websocket_actor: web::Data<
-        Addr<WebSocketActor<MessagesUseCase<PostgresDatabase>, PostgresDatabase>>,
+    websocket_service: web::Data<
+        WebSocketService<MessagesUseCase<PostgresDatabase>, PostgresDatabase>,
     >,
 ) -> actix_web::Result<HttpResponse> {
-    let (response, conn, mut stream) = WebSocketConnection::new(&req, payload)?;
-    let (tx, rx) = flume::unbounded();
-
-    while let Some(Ok(msg)) = stream.next().await {
-        if tx.send(msg).is_err() {
-            break;
-        }
-    }
-
-    let message = WebSocketActorMessage {
-        connection: conn,
-        stream: rx,
-    };
-    websocket_actor
-        .send(message)
-        .await
-        .map_err(|_| actix_web::error::ErrorInternalServerError("Failed to send message"))?;
-
+    let (response, conn, stream) = WebSocketConnection::new(&req, payload)?;
+    debug!("New websocket connection");
+    
+    // Process the connection in a new task
+    websocket_service.handle_connection(conn, stream).await;
+    
     Ok(response)
 }

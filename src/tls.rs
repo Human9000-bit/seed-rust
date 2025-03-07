@@ -1,9 +1,13 @@
 use std::{fs::File, io::BufReader};
 
-use anyhow::Ok;
+use anyhow::Result;
 use rustls_pemfile::{certs, pkcs8_private_keys};
 
-pub fn load_rustls_config() -> Result<rustls::ServerConfig, anyhow::Error> {
+pub fn load_rustls_config() -> Result<rustls::ServerConfig> {
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .unwrap();
+
     let mut cert_file = BufReader::new(File::open("cert.pem")?);
     let mut key_file = BufReader::new(File::open("key.pem")?);
 
