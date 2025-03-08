@@ -1,9 +1,9 @@
 use std::{
-    collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
     sync::Arc,
 };
 
+use dashmap::{DashMap, DashSet};
 use futures::lock::Mutex;
 
 use actix_web::{HttpRequest, HttpResponse, web::Payload};
@@ -48,13 +48,13 @@ pub struct ConnectedMessage {
 #[derive(Clone)]
 pub struct WebSocketManager {
     /// Maps each connection to the set of chat IDs it is subscribed to
-    pub connections: HashMap<Arc<WebSocketConnection>, HashSet<String>>,
+    pub connections: DashMap<Arc<WebSocketConnection>, DashSet<String>>,
 
     /// Maps each chat ID to the set of connections subscribed to it
-    pub chats: HashMap<String, HashSet<WebSocketConnection>>,
+    pub chats: DashMap<String, DashSet<Arc<WebSocketConnection>>>,
 
     /// Message queues for each chat, containing sender and receiver channels for message distribution
-    pub message_queues: HashMap<
+    pub message_queues: DashMap<
         String,
         (
             flume::Sender<ConnectedMessage>,
@@ -69,9 +69,9 @@ impl WebSocketManager {
     /// Initializes the connection tracking maps and message queues with no entries.
     pub fn new() -> Self {
         Self {
-            connections: HashMap::new(),
-            chats: HashMap::new(),
-            message_queues: HashMap::new(),
+            connections: DashMap::new(),
+            chats: DashMap::new(),
+            message_queues: DashMap::new(),
         }
     }
 }

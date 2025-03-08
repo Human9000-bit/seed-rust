@@ -1,5 +1,5 @@
 use actix_ws::Message;
-use futures::{StreamExt, lock::Mutex};
+use futures::StreamExt;
 use std::{ops::ControlFlow, sync::Arc};
 
 use crate::{
@@ -18,7 +18,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct WebSocketService<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> {
-    manager: Arc<Mutex<WebSocketManager>>,
+    manager: Arc<WebSocketManager>,
     websocket_use_case: WebSocketUseCase<MR>,
     messages_use_case: MessagesUseCase<DB>,
 }
@@ -30,7 +30,7 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
         messages_use_case: MessagesUseCase<DB>,
     ) -> Self {
         Self {
-            manager: Arc::new(Mutex::new(manager)),
+            manager: Arc::new(manager),
             websocket_use_case,
             messages_use_case,
         }
@@ -58,8 +58,8 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
                 Message::Text(text) => match serde_json::from_str::<IncomeMessage>(&text) {
                     Ok(incoming) => {
                         if let ControlFlow::Break(_) = Self::process_message(
-                            &manager,
-                            &connection,
+                            manager.clone(),
+                            connection.clone(),
                             incoming,
                             &websocket_use_case,
                             &messages_use_case,
@@ -71,7 +71,7 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
                     }
                     Err(err) => {
                         log::error!("Failed to parse message: {}", err);
-                        let _ = messages_use_case.status_response(&connection, false).await;
+                        let _ = messages_use_case.status_response(connection.clone(), false).await;
                     }
                 },
                 Message::Close(_) => {
@@ -83,12 +83,14 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
         }
 
         // Clean up on disconnect
-        websocket_use_case.disconnect(manager, connection).await;
+        websocket_use_case
+            .disconnect(manager.clone(), connection.clone())
+            .await;
     }
 
     async fn process_message(
-        manager: &Arc<Mutex<WebSocketManager>>,
-        connection: &Arc<WebSocketConnection>,
+        manager: Arc<WebSocketManager>,
+        connection: Arc<WebSocketConnection>,
         incoming: IncomeMessage,
         websocket_use_case: &WebSocketUseCase<MR>,
         messages_use_case: &MessagesUseCase<DB>,
@@ -108,30 +110,24 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
                     message: incoming,
                 };
 
-                // Minimize lock time by checking condition first, then writing
-                let contains_key = {
-                    let manager_read = manager.lock().await;
-                    manager_read.message_queues.contains_key(&msg.chat_id)
-                };
+                let contains_key = manager.message_queues.contains_key(&msg.chat_id);
 
                 if contains_key {
-                    let mut manager_write = manager.lock().await;
-                    if let Some(queue) = manager_write.message_queues.get_mut(&msg.chat_id) {
+                    if let Some(queue) = manager.message_queues.get_mut(&msg.chat_id) {
                         let _ = queue.0.send(message);
                         log::info!("Message has been successfully added to the queue");
                     }
-                    drop(manager_write); // Explicitly release the lock
 
-                    let _ = messages_use_case.status_response(connection, true).await;
+                    let _ = messages_use_case.status_response(connection.clone(), true).await;
                 } else {
                     log::info!("There is no subscribers to receive message in the queue");
                     if let Err(err) = messages_use_case.db.insert_message(msg).await {
                         log::info!("Error inserting message into database: {}", err);
-                        let _ = messages_use_case.status_response(connection, false).await;
+                        let _ = messages_use_case.status_response(connection.clone(), false).await;
                         return ControlFlow::Break(());
                     }
 
-                    let _ = messages_use_case.status_response(connection, true).await;
+                    let _ = messages_use_case.status_response(connection.clone(), true).await;
                 }
             }
             IncomeMessage::Subscribe(msg) => {
@@ -139,7 +135,7 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
                     Ok(chat_id) => chat_id,
                     Err(err) => {
                         log::error!("Error decoding chat ID: {}", err);
-                        let _ = messages_use_case.status_response(connection, false).await;
+                        let _ = messages_use_case.status_response(connection.clone(), false).await;
                         return ControlFlow::Break(());
                     }
                 };
@@ -147,12 +143,12 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
                 websocket_use_case
                     .handle_subscribe(manager.clone(), connection.clone(), &msg.chat_id)
                     .await;
-                let _ = messages_use_case.status_response(connection, true).await;
+                let _ = messages_use_case.status_response(connection.clone(), true).await;
                 let _ = messages_use_case
-                    .unread_message_response(connection, &chat_id, msg.nonce)
+                    .unread_message_response(connection.clone(), &chat_id, msg.nonce)
                     .await;
                 let _ = messages_use_case
-                    .wait_event_response(connection, &msg.chat_id)
+                    .wait_event_response(connection.clone(), &msg.chat_id)
                     .await;
             }
             IncomeMessage::Unsubscribe(msg) => {

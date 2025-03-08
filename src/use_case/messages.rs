@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 
 use crate::{
@@ -26,7 +28,7 @@ impl<T: MessagesDB> MessagesUseCase<T> {
 impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
     async fn wait_event_response(
         &self,
-        connection: &crate::seed::entity::websocket::WebSocketConnection,
+        connection: Arc<WebSocketConnection>,
         chat_id: &str,
     ) -> Result<()> {
         let outgoing = SeedResponse::WaitEvent(WaitEventDetail {
@@ -42,7 +44,7 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
 
     async fn new_event_response(
         &self,
-        connection: &WebSocketConnection,
+        connection: Arc<WebSocketConnection>,
         message: crate::seed::entity::message::OutcomeMessage,
     ) -> Result<()> {
         let outgoing = SeedResponse::NewEvent(entity::response::NewEventDetail {
@@ -57,7 +59,7 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
         Ok(())
     }
 
-    async fn status_response(&self, connection: &WebSocketConnection, status: bool) -> Result<()> {
+    async fn status_response(&self, connection: Arc<WebSocketConnection>, status: bool) -> Result<()> {
         let outgoing = SeedResponse::Status(entity::response::StatusResponse { status });
 
         let mut session = connection.session.lock().await;
@@ -69,7 +71,7 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
 
     async fn unread_message_response(
         &self,
-        connection: &WebSocketConnection,
+        connection: Arc<WebSocketConnection>,
         chat_id: &[u8],
         nonce: usize,
     ) {
@@ -90,7 +92,7 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
 
             let mut futures = Vec::new();
             for msg in messages {
-                futures.push(self.new_event_response(connection, msg));
+                futures.push(self.new_event_response(connection.clone(), msg));
             }
 
             if futures.len() < MESSAGES_LIMIT {

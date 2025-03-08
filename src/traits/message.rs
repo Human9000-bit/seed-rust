@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 
 use crate::seed::entity::{self, websocket::WebSocketConnection};
@@ -7,24 +9,24 @@ pub trait MessagesRepository {
     /// Waits for an event response on the websocket connection for a specific chat
     async fn wait_event_response(
         &self,
-        connecion: &WebSocketConnection,
+        connecion: Arc<WebSocketConnection>,
         chat_id: &str,
     ) -> Result<()>;
 
     /// Sends a new message event response over the websocket connection
     async fn new_event_response(
         &self,
-        connecion: &WebSocketConnection,
+        connection: Arc<WebSocketConnection>,
         message: entity::message::OutcomeMessage,
     ) -> Result<()>;
 
     /// Sends a status response indicating connection state
-    async fn status_response(&self, connecion: &WebSocketConnection, status: bool) -> Result<()>;
+    async fn status_response(&self, connecion: Arc<WebSocketConnection>, status: bool) -> Result<()>;
 
     /// Sends a response about unread messages for a chat
     async fn unread_message_response(
         &self,
-        connecion: &WebSocketConnection,
+        connecion: Arc<WebSocketConnection>,
         chat_id: &[u8],
         nonce: usize,
     );

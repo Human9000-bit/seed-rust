@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use futures::lock::Mutex;
-
 use crate::{
     seed::entity::{
         message::{IncomeMessage, OutcomeMessage},
@@ -22,9 +20,7 @@ impl<T: MessagesRepository> WebSocketUseCase<T> {
         }
     }
 
-    pub async fn start_message_processor(&self, ws: Arc<Mutex<WebSocketManager>>, chat_id: &str) {
-        let mut ws = ws.lock().await;
-
+    pub async fn start_message_processor(&self, ws: Arc<WebSocketManager>, chat_id: &str) {
         let chat_id = chat_id.to_string();
         let (sender, reciever) = flume::bounded(100);
         ws.message_queues
@@ -49,42 +45,37 @@ impl<T: MessagesRepository> WebSocketUseCase<T> {
 
     async fn subscribe_to_chat(
         &self,
-        ws: Arc<Mutex<WebSocketManager>>,
+        ws: Arc<WebSocketManager>,
         connection: Arc<WebSocketConnection>,
         chat_id: &str,
     ) {
-        let mut ws_guard = ws.lock().await;
+        ws.connections.entry(connection).or_default();
+        ws.chats.entry(chat_id.to_string()).or_default();
 
-        ws_guard.connections.entry(connection).or_default();
-        ws_guard.chats.entry(chat_id.to_string()).or_default();
-
-        if !ws_guard.message_queues.contains_key(chat_id) {
-            drop(ws_guard);
+        if !ws.message_queues.contains_key(chat_id) {
             self.start_message_processor(ws, chat_id).await;
         }
     }
 
     pub async fn unsubscribe_from_chat(
         &self,
-        ws: Arc<Mutex<WebSocketManager>>,
+        ws: Arc<WebSocketManager>,
         connection: Arc<WebSocketConnection>,
-        chat_id: &str,
+        chat_id: String,
     ) {
-        let mut ws = ws.lock().await;
-
         if let Some(conn) = ws.connections.get_mut(&connection) {
-            conn.remove(chat_id);
+            conn.remove(&chat_id);
 
             if conn.is_empty() {
                 ws.connections.remove(&connection);
             }
         }
 
-        if let Some(chats) = ws.chats.get_mut(chat_id) {
+        if let Some(chats) = ws.chats.get_mut(&chat_id) {
             chats.remove(&connection);
 
             if chats.is_empty() {
-                ws.chats.remove(chat_id);
+                ws.chats.remove(&chat_id);
             }
         }
     }
@@ -93,7 +84,7 @@ impl<T: MessagesRepository> WebSocketUseCase<T> {
 impl<T: MessagesRepository> WebsocketRepository for WebSocketUseCase<T> {
     async fn handle_subscribe(
         &self,
-        ws: Arc<Mutex<WebSocketManager>>,
+        ws: Arc<WebSocketManager>,
         connection: Arc<WebSocketConnection>,
         chat_id: &str,
     ) {
@@ -102,25 +93,26 @@ impl<T: MessagesRepository> WebsocketRepository for WebSocketUseCase<T> {
 
     async fn handle_unsubscribe(
         &self,
-        ws: Arc<Mutex<WebSocketManager>>,
+        ws: Arc<WebSocketManager>,
         connection: Arc<WebSocketConnection>,
         chat_id: &str,
     ) {
-        self.unsubscribe_from_chat(ws, connection, chat_id).await;
+        self.unsubscribe_from_chat(ws, connection, chat_id.to_owned())
+            .await;
     }
 
     async fn broadcast_event(
         &self,
-        ws: Arc<Mutex<WebSocketManager>>,
+        ws: Arc<WebSocketManager>,
         message: crate::seed::entity::message::IncomeMessage,
     ) {
         let message: OutcomeMessage = message.into();
 
-        let ws = ws.lock().await;
+        let connections = ws.chats.get(&message.chat_id).unwrap();
 
-        let tasks = ws.chats.get(&message.chat_id).unwrap().iter().map(|conn| {
+        let tasks = connections.iter().map(|conn| {
             self.messages_repository
-                .new_event_response(conn, message.clone())
+                .new_event_response(conn.clone(), message.clone())
         });
 
         let results = futures::future::join_all(tasks).await;
@@ -131,26 +123,18 @@ impl<T: MessagesRepository> WebsocketRepository for WebSocketUseCase<T> {
         }
     }
 
-    async fn disconnect(
-        &self,
-        ws: Arc<Mutex<WebSocketManager>>,
-        connection: Arc<WebSocketConnection>,
-    ) {
+    async fn disconnect(&self, ws: Arc<WebSocketManager>, connection: Arc<WebSocketConnection>) {
         let _ = connection.session.lock().await.to_owned().close(None).await;
 
-        let ws_unlocked = ws.lock();
-
-        let mut ws_unlocked = ws_unlocked.await;
-
-        if let Some(chat_id) = ws_unlocked.connections.get(&connection) {
+        if let Some(chat_id) = ws.connections.get(&connection) {
             let handles = chat_id
                 .iter()
-                .map(|id| self.unsubscribe_from_chat(ws.clone(), connection.clone(), id))
+                .map(|id| self.unsubscribe_from_chat(ws.clone(), connection.clone(), id.to_owned()))
                 .collect::<Vec<_>>();
 
             futures::future::join_all(handles).await;
         }
 
-        ws_unlocked.connections.remove(&connection);
+        ws.connections.remove(&connection);
     }
 }
