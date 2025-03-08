@@ -22,7 +22,7 @@ impl<T: MessagesRepository> WebSocketUseCase<T> {
 
     pub async fn start_message_processor(&self, ws: Arc<WebSocketManager>, chat_id: &str) {
         let chat_id = chat_id.to_string();
-        let (sender, reciever) = flume::bounded(100);
+        let (sender, reciever) = flume::unbounded();
         ws.message_queues
             .insert(chat_id.clone(), (sender, reciever.clone()));
 
