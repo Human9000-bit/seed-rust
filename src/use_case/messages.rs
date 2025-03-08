@@ -12,20 +12,37 @@ use crate::{
     traits::message::{MessagesDB, MessagesRepository},
 };
 
+/// Maximum number of messages to fetch in a single request
 const MESSAGES_LIMIT: usize = 100;
 
+/// Use case for handling message operations
+///
+/// This struct implements the business logic for message operations
+/// such as sending, receiving, and validating messages.
 #[derive(Clone, Copy)]
 pub struct MessagesUseCase<T: MessagesDB> {
+    /// Database interface for message storage
     pub db: T,
 }
 
 impl<T: MessagesDB> MessagesUseCase<T> {
+    /// Creates a new instance of MessagesUseCase
+    ///
+    /// # Arguments
+    /// * `db` - Database implementation for message storage
     pub fn new(db: T) -> Self {
         Self { db }
     }
 }
 
 impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
+    /// Sends a wait event response to the client
+    ///
+    /// Notifies the client to wait for events on a specific chat.
+    ///
+    /// # Arguments
+    /// * `connection` - WebSocket connection to the client
+    /// * `chat_id` - Identifier for the chat session
     async fn wait_event_response(
         &self,
         connection: Arc<WebSocketConnection>,
@@ -42,6 +59,13 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
         Ok(())
     }
 
+    /// Sends a new event response to the client
+    ///
+    /// Delivers a new message to the client over the WebSocket connection.
+    ///
+    /// # Arguments
+    /// * `connection` - WebSocket connection to the client
+    /// * `message` - Message to be delivered
     async fn new_event_response(
         &self,
         connection: Arc<WebSocketConnection>,
@@ -59,6 +83,13 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
         Ok(())
     }
 
+    /// Sends a status response to the client
+    ///
+    /// Updates the client about the status of an operation.
+    ///
+    /// # Arguments
+    /// * `connection` - WebSocket connection to the client
+    /// * `status` - Status of the operation (true = success, false = failure)
     async fn status_response(
         &self,
         connection: Arc<WebSocketConnection>,
@@ -73,6 +104,15 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
         Ok(())
     }
 
+    /// Sends unread messages to the client
+    ///
+    /// Fetches and sends historical messages from the database in batches,
+    /// starting from the specified nonce value.
+    ///
+    /// # Arguments
+    /// * `connection` - WebSocket connection to the client
+    /// * `chat_id` - Identifier for the chat session
+    /// * `nonce` - Starting position for fetching messages
     async fn unread_message_response(
         &self,
         connection: Arc<WebSocketConnection>,
@@ -82,6 +122,7 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
         let mut current_nonce = nonce;
 
         loop {
+            // Fetch a batch of messages from the database
             let messages = self
                 .db
                 .fetch_history(chat_id, current_nonce, MESSAGES_LIMIT)
@@ -94,11 +135,13 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
                 }
             };
 
+            // Prepare futures for sending each message
             let mut futures = Vec::new();
             for msg in messages {
                 futures.push(self.new_event_response(connection.clone(), msg));
             }
 
+            // If we have fewer messages than the limit, this is the last batch
             if futures.len() < MESSAGES_LIMIT {
                 futures::future::join_all(futures)
                     .await
@@ -111,6 +154,7 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
                 break;
             };
 
+            // Process all message sending futures
             futures::future::join_all(futures)
                 .await
                 .into_iter()
@@ -120,27 +164,37 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
                     }
                 });
 
+            // Move to the next batch of messages
             current_nonce += MESSAGES_LIMIT;
         }
     }
 
+    /// Validates message format and encoding
+    ///
+    /// Checks if the message has properly encoded fields.
+    ///
+    /// # Arguments
+    /// * `message` - Message to validate
+    ///
+    /// # Returns
+    /// * `bool` - true if message is valid, false otherwise
     async fn is_valid_message(&self, message: entity::message::OutcomeMessage) -> bool {
+        // Validate chat_id
         let chat_id = decode_base64(message.chat_id).await;
-
         if chat_id.is_err() {
             log::error!("invalid chat id");
             return false;
         }
 
+        // Validate signature
         let signature = decode_base64(message.signature).await;
-
         if signature.is_err() {
             log::error!("invalid signature");
             return false;
         }
 
+        // Validate content initialization vector
         let content_iv = decode_base64(message.content_iv).await;
-
         if content_iv.is_err() {
             log::error!("invalid content iv");
             return false;
@@ -149,6 +203,10 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
         true
     }
 
+    /// Inserts a message into the database
+    ///
+    /// # Arguments
+    /// * `message` - Message to be stored
     async fn insert_message(&self, message: entity::message::Message) -> Result<()> {
         self.db.insert_message(message).await?;
         Ok(())
