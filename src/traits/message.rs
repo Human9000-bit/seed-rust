@@ -21,7 +21,11 @@ pub trait MessagesRepository {
     ) -> Result<()>;
 
     /// Sends a status response indicating connection state
-    async fn status_response(&self, connecion: Arc<WebSocketConnection>, status: bool) -> Result<()>;
+    async fn status_response(
+        &self,
+        connecion: Arc<WebSocketConnection>,
+        status: bool,
+    ) -> Result<()>;
 
     /// Sends a response about unread messages for a chat
     async fn unread_message_response(

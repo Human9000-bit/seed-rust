@@ -42,9 +42,9 @@ async fn main() -> Result<()> {
 
     // Replace actor with service
     let websocket_service = infrastructure::websocket::WebSocketService::new(
-        websocket_manager, 
-        websocket_use_case, 
-        messages_use_case
+        websocket_manager,
+        websocket_use_case,
+        messages_use_case,
     );
 
     let server = actix_web::HttpServer::new(move || {
@@ -70,9 +70,9 @@ async fn accept_websocket_connection(
 ) -> actix_web::Result<HttpResponse> {
     let (response, conn, stream) = WebSocketConnection::new(&req, payload)?;
     debug!("New websocket connection");
-    
+
     // Process the connection in a new task
     websocket_service.handle_connection(conn, stream).await;
-    
+
     Ok(response)
 }

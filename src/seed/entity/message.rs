@@ -141,7 +141,7 @@ mod tests {
                 assert_eq!(message.signature, "abc123def456");
                 assert_eq!(message.content, "encrypted_content");
                 assert_eq!(message.content_iv, "iv_data");
-            },
+            }
             _ => panic!("Deserialized to wrong variant, expected IncomeMessage::Send"),
         }
     }

@@ -71,7 +71,9 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
                     }
                     Err(err) => {
                         log::error!("Failed to parse message: {}", err);
-                        let _ = messages_use_case.status_response(connection.clone(), false).await;
+                        let _ = messages_use_case
+                            .status_response(connection.clone(), false)
+                            .await;
                     }
                 },
                 Message::Close(_) => {
@@ -118,16 +120,22 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
                         log::info!("Message has been successfully added to the queue");
                     }
 
-                    let _ = messages_use_case.status_response(connection.clone(), true).await;
+                    let _ = messages_use_case
+                        .status_response(connection.clone(), true)
+                        .await;
                 } else {
                     log::info!("There is no subscribers to receive message in the queue");
                     if let Err(err) = messages_use_case.db.insert_message(msg).await {
                         log::info!("Error inserting message into database: {}", err);
-                        let _ = messages_use_case.status_response(connection.clone(), false).await;
+                        let _ = messages_use_case
+                            .status_response(connection.clone(), false)
+                            .await;
                         return ControlFlow::Break(());
                     }
 
-                    let _ = messages_use_case.status_response(connection.clone(), true).await;
+                    let _ = messages_use_case
+                        .status_response(connection.clone(), true)
+                        .await;
                 }
             }
             IncomeMessage::Subscribe(msg) => {
@@ -135,7 +143,9 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
                     Ok(chat_id) => chat_id,
                     Err(err) => {
                         log::error!("Error decoding chat ID: {}", err);
-                        let _ = messages_use_case.status_response(connection.clone(), false).await;
+                        let _ = messages_use_case
+                            .status_response(connection.clone(), false)
+                            .await;
                         return ControlFlow::Break(());
                     }
                 };
@@ -143,7 +153,9 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
                 websocket_use_case
                     .handle_subscribe(manager.clone(), connection.clone(), &msg.chat_id)
                     .await;
-                let _ = messages_use_case.status_response(connection.clone(), true).await;
+                let _ = messages_use_case
+                    .status_response(connection.clone(), true)
+                    .await;
                 let _ = messages_use_case
                     .unread_message_response(connection.clone(), &chat_id, msg.nonce)
                     .await;

@@ -23,9 +23,5 @@ pub trait WebsocketRepository {
     /// Broadcasts an event to connected clients
     async fn broadcast_event(&self, ws: Arc<WebSocketManager>, message: IncomeMessage);
     /// Handles client disconnection
-    async fn disconnect(
-        &self,
-        ws: Arc<WebSocketManager>,
-        connection: Arc<WebSocketConnection>,
-    );
+    async fn disconnect(&self, ws: Arc<WebSocketManager>, connection: Arc<WebSocketConnection>);
 }

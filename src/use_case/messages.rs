@@ -59,7 +59,11 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
         Ok(())
     }
 
-    async fn status_response(&self, connection: Arc<WebSocketConnection>, status: bool) -> Result<()> {
+    async fn status_response(
+        &self,
+        connection: Arc<WebSocketConnection>,
+        status: bool,
+    ) -> Result<()> {
         let outgoing = SeedResponse::Status(entity::response::StatusResponse { status });
 
         let mut session = connection.session.lock().await;

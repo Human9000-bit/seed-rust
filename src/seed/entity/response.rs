@@ -10,19 +10,19 @@ use super::message::OutcomeMessage;
 #[serde(tag = "type", content = "response")]
 pub enum SeedResponse {
     /// Represents a new event notification.
-    /// 
+    ///
     /// This variant is used when a new event occurs that needs to be sent to the client.
     #[serde(rename = "event")]
     NewEvent(NewEventDetail),
 
     /// Represents a wait event notification.
-    /// 
+    ///
     /// This variant is used when the client needs to wait for an event to complete.
     #[serde(rename = "event")]
     WaitEvent(WaitEventDetail),
 
     /// Represents a status response.
-    /// 
+    ///
     /// This variant is used to communicate the success or failure of an operation.
     #[serde(rename = "response")]
     Status(StatusResponse),
@@ -34,7 +34,7 @@ pub enum SeedResponse {
 #[derive(Serialize)]
 pub struct NewEventDetail {
     /// The type of the event.
-    /// 
+    ///
     /// This field is renamed to "type" in the serialized JSON.
     #[serde(rename = "type")]
     pub rtype: String,
@@ -49,13 +49,13 @@ pub struct NewEventDetail {
 #[derive(Serialize)]
 pub struct WaitEventDetail {
     /// The type of the wait event.
-    /// 
+    ///
     /// This field is renamed to "type" in the serialized JSON.
     #[serde(rename = "type")]
     pub rtype: String,
 
     /// The chat ID associated with this wait event.
-    /// 
+    ///
     /// This field is renamed to "queueId" in the serialized JSON.
     #[serde(rename = "queueId")]
     pub chat_id: String,
@@ -67,7 +67,7 @@ pub struct WaitEventDetail {
 #[derive(Serialize)]
 pub struct StatusResponse {
     /// The status of the operation.
-    /// 
+    ///
     /// true indicates success, false indicates failure.
     pub status: bool,
 }
@@ -77,7 +77,7 @@ mod tests {
     use super::*;
 
     /// Test that StatusResponse serializes correctly.
-    /// 
+    ///
     /// Verifies that the JSON serialization produces the expected format.
     #[test]
     fn test_status_serialization() {
