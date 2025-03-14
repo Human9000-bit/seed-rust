@@ -24,7 +24,7 @@ use seed::entity::websocket::{WebSocketConnection, WebSocketManager};
 use use_case::messages::MessagesUseCase;
 
 /// Main application entry point
-/// 
+///
 /// Sets up the following components:
 /// - Logging system
 /// - TLS configuration
@@ -34,7 +34,7 @@ use use_case::messages::MessagesUseCase;
 /// - HTTP server with WebSocket endpoint
 ///
 /// # Returns
-/// 
+///
 /// Returns a `Result` that indicates whether the application started successfully
 #[actix_web::main]
 async fn main() -> Result<()> {
@@ -108,7 +108,7 @@ async fn accept_websocket_connection(
     debug!("New websocket connection");
 
     // Process the connection in a new task
-    websocket_service.handle_connection(conn, stream).await;
+    actix_web::rt::spawn(async move { websocket_service.handle_connection(conn, stream).await });
 
     // Return the WebSocket handshake response
     Ok(response)
