@@ -120,7 +120,7 @@ impl MessagesDB for PostgresDatabase {
         // Start async fetch of last known nonce for this chat
         let last_nonce_future = self.get_last_nonce(chat_id.as_slice());
 
-        // Parallel decode of content and initialization vector
+        // Decode of content and initialization vector
         let content = decode_base64(message.content).await?;
         let content_iv = decode_base64(message.content_iv).await?;
 
