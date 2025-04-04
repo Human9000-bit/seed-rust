@@ -45,10 +45,10 @@ async fn main() -> Result<()> {
     let tls_config = tls::load_rustls_config()?;
 
     // Get the server port from environment variables or use default 8080
-    let port = std::env::var("PORT")
-        .unwrap_or("8080".to_string())
-        .parse::<u16>()
-        .unwrap();
+    let port = match std::env::var("PORT") {
+        Ok(port_str) => port_str.parse().unwrap_or(8080),
+        Err(_) => 8080,
+    };
 
     // Initialize database connection pool
     let pg_pool = PostgresDatabase::new().await?;

@@ -32,3 +32,36 @@ actix = "0.13.5"
 rustls-pemfile = "2.2.0"
 rustls = "0.23"
 dashmap = { version = "6.1.0", features = ["inline"] }
+
+[lints.clippy]
+# Arithmetic
+checked_conversions = "deny"
+cast_precision_loss = "deny"
+integer_division = "deny"
+arithmetic_side_effects = "deny"
+unchecked_duration_subtraction = "deny"
+
+# Unwraps
+unwrap_used = "deny"
+expect_used = "deny"
+panicking_unwrap = "deny"
+option_env_unwrap = "deny"
+
+# Array indexing
+indexing_slicing = "deny" # Avoid direct array indexing and use safer methods like .get()
+
+# Path handling
+join_absolute_paths = "deny"
+
+# Serialization issues
+serde_api_misuse = "deny"
+
+# Unbounded input
+uninit_vec = "deny"
+
+# Unsafe code detection
+transmute_int_to_char = "deny" # Prevent unsafe transmutation from integers to characters
+transmute_int_to_float = "deny" # Prevent unsafe transmutation from integers to floats
+transmute_ptr_to_ref = "deny" # Prevent unsafe transmutation from pointers to references
+transmute_undefined_repr = "deny" # Detect transmutes with potentially undefined representations
+transmute_unnamed_fields = "deny" # Detect transmutes with unnamed fields

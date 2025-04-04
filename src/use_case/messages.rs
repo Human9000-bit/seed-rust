@@ -165,7 +165,16 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
                 });
 
             // Move to the next batch of messages
-            current_nonce += MESSAGES_LIMIT;
+            // Overflow check:
+            current_nonce = match current_nonce.checked_add(MESSAGES_LIMIT) {
+                // If no overflow occurred, update the nonce
+                Some(int) => int,
+                // If overflow occurred, send a status response and finish processing
+                None => {
+                    let _ = self.status_response(connection, false).await;
+                    return;
+                }
+            };
         }
     }
 

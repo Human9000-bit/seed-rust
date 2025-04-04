@@ -128,8 +128,10 @@ impl MessagesDB for PostgresDatabase {
         let last_nonce = last_nonce_future.await?;
 
         // Validate sequential nonce increment
-        if message.nonce != last_nonce + 1 {
-            return Err(anyhow!(SeedError::InvalidNonce));
+        if let Some(nonce) = last_nonce.checked_add(1) { // overflow check
+            if message.nonce != nonce {
+                return Err(anyhow!(SeedError::InvalidNonce));
+            }
         }
 
         // Prepare SQL parameters with dedicated types for type safety

@@ -127,6 +127,7 @@ mod tests {
     /// Tests that IncomeMessage::Send deserializes correctly from JSON
     /// Verifies the tag/content structure and field names are as expected
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn test_income_message_send_deserialization() {
         let json_str = r#"{"type":"send","message":{"nonce":12345,"queueId":"chat-123456","signature":"abc123def456","content":"encrypted_content","contentIV":"iv_data"}}"#;
 

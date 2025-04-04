@@ -49,22 +49,29 @@ impl<T: MessagesRepository> WebSocketUseCase<T> {
             .insert(chat_id.clone(), (sender, reciever.clone()));
 
         // Process each message in the queue
-        for event in ws.message_queues.get(&chat_id).unwrap().1.iter() {
-            let message = match event.message {
-                IncomeMessage::Send(msg) => msg,
-                IncomeMessage::Subscribe(msg) => msg,
-                IncomeMessage::Unsubscribe(msg) => msg,
-                _ => continue, // Skip other message types
-            };
-            // Persist the message to the repository
-            let _ = self
-                .messages_repository
-                .insert_message(message)
-                .await
-                .inspect_err(|e| error!("Error inserting message: {e}"));
-        }
+        match ws.message_queues.get(&chat_id) {
+            Some(reciever) => {
+                for event in reciever.1.iter() {
+                    let message = match event.message {
+                        IncomeMessage::Send(msg) => msg,
+                        IncomeMessage::Subscribe(msg) => msg,
+                        IncomeMessage::Unsubscribe(msg) => msg,
+                        _ => continue, // Skip other message types
+                    };
+                    // Persist the message to the repository
+                    let _ = self
+                        .messages_repository
+                        .insert_message(message)
+                        .await
+                        .inspect_err(|e| error!("Error inserting message: {e}"));
+                }
 
-        info!("All users have unsubscribed from chat {chat_id}")
+                info!("All users have unsubscribed from chat {chat_id}");
+            }
+            None => {
+                error!("Failed to start message processor for chat {chat_id}: channel not found")
+            }
+        }
     }
 
     /// Subscribes a connection to a chat
@@ -172,7 +179,16 @@ impl<T: MessagesRepository> WebsocketRepository for WebSocketUseCase<T> {
         let message: OutcomeMessage = message.into();
 
         // Get all connections subscribed to this chat
-        let connections = ws.chats.get(&message.chat_id).unwrap();
+        let connections = match ws.chats.get(&message.chat_id) {
+            Some(chats) => chats,
+            None => {
+                error!(
+                    "Error broadcasting event to chat {}: Chat not found",
+                    message.chat_id
+                );
+                return;
+            }
+        };
 
         // Create tasks to send the message to each connection
         let tasks = connections.iter().map(|conn| {

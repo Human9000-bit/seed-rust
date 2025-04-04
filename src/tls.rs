@@ -21,9 +21,8 @@ use rustls_pemfile::{certs, pkcs8_private_keys};
 /// - If the certificate or key are invalid
 pub fn load_rustls_config() -> Result<rustls::ServerConfig> {
     // Install AWS-LC as the cryptographic provider
-    rustls::crypto::aws_lc_rs::default_provider()
-        .install_default()
-        .unwrap();
+    let _ = rustls::crypto::aws_lc_rs::default_provider()
+        .install_default();
 
     // Open and prepare certificate and key files for reading
     let mut cert_file = BufReader::new(File::open("cert.pem")?);
