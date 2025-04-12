@@ -41,7 +41,7 @@ pub struct Message {
 
 /// Outcoming message struct for sending responses back to clients.
 /// Has the same structure as Message but separated for clear direction indication.
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Serialize, Clone, Default)]
 pub struct OutcomeMessage {
     /// Unique number for message sequencing and identification
     pub nonce: usize,
