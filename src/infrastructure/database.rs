@@ -4,6 +4,7 @@ use crate::seed::error::SeedError;
 use crate::traits::message::MessagesDB;
 use anyhow::{Result, anyhow};
 use base64::prelude::*;
+use log::{warn, error};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres, query};
 use std::env::var;

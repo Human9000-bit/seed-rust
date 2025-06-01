@@ -1,0 +1,32 @@
+[package]
+name = "seed"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["Human9000-bit"]
+
+[lib]
+path = "lib.rs"
+
+[[bin]]
+name = "seed-rust"
+path = "src/main.rs"
+
+[dependencies]
+actix-web.workspace = true
+actix-ws.workspace = true
+sqlx.workspace = true
+anyhow.workspace = true
+base64.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+pretty_env_logger.workspace = true
+log.workspace = true
+thiserror.workspace = true
+flume.workspace = true
+futures.workspace = true
+uuid.workspace = true
+actix.workspace = true
+rustls-pemfile.workspace = true
+rustls.workspace = true
+dashmap.workspace = true
