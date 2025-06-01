@@ -1,9 +1,9 @@
 [package]
 name = "seed"
 version = "0.1.0"
-edition = "2024"
-license = "MIT OR Apache-2.0"
-authors = ["Human9000-bit"]
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
 
 [lib]
 path = "lib.rs"

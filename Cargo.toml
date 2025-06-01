@@ -1,6 +1,12 @@
 [workspace]
 members = ["src"]
 
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["Human9000-bit"]
+
+
 [profile.release]
 opt-level = 3
 lto = true
