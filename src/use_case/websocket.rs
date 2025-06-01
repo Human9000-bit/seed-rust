@@ -2,12 +2,11 @@ use std::sync::Arc;
 
 use log::{error, info};
 
-use crate::{
-    seed::entity::{
-        message::{IncomeMessage, OutcomeMessage},
-        websocket::{WebSocketConnection, WebSocketManager},
-    },
-    traits::{message::MessagesRepository, websocket::WebsocketRepository},
+use crate::traits::{message::MessagesRepository, websocket::WebsocketRepository};
+
+use protocol::entity::{
+    message::{IncomeMessage, OutcomeMessage},
+    websocket::{WebSocketConnection, WebSocketManager},
 };
 
 /// WebSocketUseCase handles WebSocket communication and message processing
@@ -175,7 +174,7 @@ impl<T: MessagesRepository> WebsocketRepository for WebSocketUseCase<T> {
     async fn broadcast_event(
         &self,
         ws: Arc<WebSocketManager>,
-        message: crate::seed::entity::message::IncomeMessage,
+        message: protocol::entity::message::IncomeMessage,
     ) {
         // Convert incoming message to outgoing format
         let message: OutcomeMessage = message.into();

@@ -13,6 +13,8 @@ name = "seed-rust"
 path = "src/main.rs"
 
 [dependencies]
+protocol = { path = "../protocol" }
+
 actix-web.workspace = true
 actix-ws.workspace = true
 sqlx.workspace = true

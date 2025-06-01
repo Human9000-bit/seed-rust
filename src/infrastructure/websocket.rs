@@ -5,16 +5,17 @@ use std::{ops::ControlFlow, sync::Arc};
 
 use crate::{
     base64::decode_base64,
-    seed::entity::{
-        self,
-        message::IncomeMessage,
-        websocket::{WebSocketConnection, WebSocketManager},
-    },
     traits::{
         message::{MessagesDB, MessagesRepository},
         websocket::WebsocketRepository,
     },
     use_case::{messages::MessagesUseCase, websocket::WebSocketUseCase},
+};
+
+use protocol::entity::{
+    self,
+    message::IncomeMessage,
+    websocket::{WebSocketConnection, WebSocketManager},
 };
 
 /// Service for handling WebSocket connections and messages.

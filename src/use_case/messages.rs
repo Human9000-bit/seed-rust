@@ -4,12 +4,13 @@ use anyhow::Result;
 
 use crate::{
     base64::decode_base64,
-    seed::entity::{
-        self,
-        response::{SeedResponse, WaitEventDetail},
-        websocket::WebSocketConnection,
-    },
     traits::message::{MessagesDB, MessagesRepository},
+};
+
+use protocol::entity::{
+    self,
+    response::{SeedResponse, WaitEventDetail},
+    websocket::WebSocketConnection,
 };
 
 /// Maximum number of messages to fetch in a single request
@@ -69,7 +70,7 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
     async fn new_event_response(
         &self,
         connection: Arc<WebSocketConnection>,
-        message: crate::seed::entity::message::OutcomeMessage,
+        message: protocol::entity::message::OutcomeMessage,
     ) -> Result<()> {
         let outgoing = SeedResponse::NewEvent(entity::response::NewEventDetail {
             rtype: "new".to_string(),

@@ -10,7 +10,6 @@ extern crate pretty_env_logger;
 
 mod base64;
 mod infrastructure;
-mod seed;
 mod tls;
 mod traits;
 mod use_case;

@@ -1,10 +1,12 @@
 use crate::base64::{decode_base64, encode_base64};
-use crate::seed::entity::message::{self, OutcomeMessage};
-use crate::seed::error::SeedError;
 use crate::traits::message::MessagesDB;
 use anyhow::{Result, anyhow};
 use base64::prelude::*;
-use log::{warn, error};
+use log::{error, warn};
+use protocol::{
+    entity::message::{self, OutcomeMessage},
+    error::SeedError,
+};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres, query};
 use std::env::var;
@@ -129,7 +131,8 @@ impl MessagesDB for PostgresDatabase {
         let last_nonce = last_nonce_future.await?;
 
         // Validate sequential nonce increment
-        if let Some(nonce) = last_nonce.checked_add(1) { // overflow check
+        if let Some(nonce) = last_nonce.checked_add(1) {
+            // overflow check
             if message.nonce != nonce {
                 return Err(anyhow!(SeedError::InvalidNonce));
             }
