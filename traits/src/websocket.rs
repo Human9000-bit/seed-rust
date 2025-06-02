@@ -7,21 +7,21 @@ use std::sync::Arc;
 /// Repository trait for handling WebSocket operations
 pub trait WebsocketRepository {
     /// Handles subscription to a chat room
-    async fn handle_subscribe(
+    fn handle_subscribe(
         &self,
         ws: Arc<WebSocketManager>,
         connection: Arc<WebSocketConnection>,
         chat_id: &str,
-    );
+    ) -> impl Future<Output = ()>;
     /// Handles unsubscription from a chat room
-    async fn handle_unsubscribe(
+    fn handle_unsubscribe(
         &self,
         ws: Arc<WebSocketManager>,
         connection: Arc<WebSocketConnection>,
         chat_id: &str,
-    );
+    ) -> impl Future<Output = ()>;
     /// Broadcasts an event to connected clients
-    async fn broadcast_event(&self, ws: Arc<WebSocketManager>, message: IncomeMessage);
+    fn broadcast_event(&self, ws: Arc<WebSocketManager>, message: IncomeMessage) -> impl Future<Output = ()>;
     /// Handles client disconnection
-    async fn disconnect(&self, ws: Arc<WebSocketManager>, connection: Arc<WebSocketConnection>);
+    fn disconnect(&self, ws: Arc<WebSocketManager>, connection: Arc<WebSocketConnection>) -> impl Future<Output = ()>;
 }
