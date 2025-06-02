@@ -5,11 +5,12 @@ use std::{ops::ControlFlow, sync::Arc};
 
 use crate::{
     base64::decode_base64,
-    traits::{
-        message::{MessagesDB, MessagesRepository},
-        websocket::WebsocketRepository,
-    },
     use_case::{messages::MessagesUseCase, websocket::WebSocketUseCase},
+};
+
+use traits::{
+    message::{MessagesDB, MessagesRepository},
+    websocket::WebsocketRepository,
 };
 
 use protocol::entity::{

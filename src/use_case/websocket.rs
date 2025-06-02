@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use log::{error, info};
 
-use crate::traits::{message::MessagesRepository, websocket::WebsocketRepository};
+use traits::{message::MessagesRepository, websocket::WebsocketRepository};
 
 use protocol::entity::{
     message::{IncomeMessage, OutcomeMessage},

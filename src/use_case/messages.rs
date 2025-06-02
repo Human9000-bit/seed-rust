@@ -2,10 +2,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use crate::{
-    base64::decode_base64,
-    traits::message::{MessagesDB, MessagesRepository},
-};
+use crate::base64::decode_base64;
+
+use traits::message::{MessagesDB, MessagesRepository};
 
 use protocol::entity::{
     self,
