@@ -1,4 +1,4 @@
-use crate::seed::entity::{
+use protocol::entity::{
     message::IncomeMessage,
     websocket::{WebSocketConnection, WebSocketManager},
 };

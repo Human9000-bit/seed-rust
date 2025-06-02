@@ -1,19 +1,20 @@
 use actix_ws::Message;
 use futures::StreamExt;
+use log::debug;
 use std::{ops::ControlFlow, sync::Arc};
 
-use crate::{
-    base64::decode_base64,
-    seed::entity::{
-        self,
-        message::IncomeMessage,
-        websocket::{WebSocketConnection, WebSocketManager},
-    },
-    traits::{
-        message::{MessagesDB, MessagesRepository},
-        websocket::WebsocketRepository,
-    },
-    use_case::{messages::MessagesUseCase, websocket::WebSocketUseCase},
+use misc::base64::decode_base64;
+use use_case::{messages::MessagesUseCase, websocket::WebSocketUseCase};
+
+use traits::{
+    message::{MessagesDB, MessagesRepository},
+    websocket::WebsocketRepository,
+};
+
+use protocol::entity::{
+    self,
+    message::IncomeMessage,
+    websocket::{WebSocketConnection, WebSocketManager},
 };
 
 /// Service for handling WebSocket connections and messages.

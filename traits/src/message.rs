@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use crate::seed::entity::{self, websocket::WebSocketConnection};
+use protocol::entity::{self, websocket::WebSocketConnection};
 
 /// Repository trait for handling websocket message events and responses
 pub trait MessagesRepository {
