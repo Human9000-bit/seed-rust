@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
     let messages_use_case = use_case::messages::MessagesUseCase::new(pg_pool);
     let websocket_use_case =
         use_case::websocket::WebSocketUseCase::new(messages_use_case.clone()).await;
-    let websocket_manager = WebSocketManager::new();
+    let websocket_manager = WebSocketManager::default();
 
     // Create the WebSocket service to handle connections
     let websocket_service = infrastructure::websocket::WebSocketService::new(

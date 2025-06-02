@@ -45,7 +45,7 @@ pub struct ConnectedMessage {
 ///
 /// This central manager keeps track of all active connections and their subscriptions,
 /// enabling efficient message distribution to the appropriate subscribers.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct WebSocketManager {
     /// Maps each connection to the set of chat IDs it is subscribed to
     pub connections: DashMap<Arc<WebSocketConnection>, DashSet<String>>,
@@ -67,11 +67,11 @@ impl WebSocketManager {
     /// Creates a new empty WebSocketManager instance.
     ///
     /// Initializes the connection tracking maps and message queues with no entries.
-    pub fn new() -> Self {
+    pub fn new(connections: DashMap<Arc<WebSocketConnection>, DashSet<String>>, chats: DashMap<String, DashSet<Arc<WebSocketConnection>>>, message_queues: DashMap<String, (flume::Sender<ConnectedMessage>, flume::Receiver<ConnectedMessage>)>) -> Self {
         Self {
-            connections: DashMap::new(),
-            chats: DashMap::new(),
-            message_queues: DashMap::new(),
+            connections,
+            chats,
+            message_queues,
         }
     }
 }
