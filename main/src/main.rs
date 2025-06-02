@@ -3,10 +3,9 @@
 
 // In the name of the Father, and in the name of the Son, and in the name of the Holy Spirit. Amen.
 
-// /// External crates for logging functionality
-// #[macro_use]
-// extern crate log;
-// extern crate pretty_env_logger;
+/// External crates for logging functionality
+extern crate log;
+extern crate pretty_env_logger;
 
 use actix_web::web::Data;
 use actix_web::{HttpRequest, HttpResponse, get, web};
