@@ -10,7 +10,7 @@ path = "lib.rs"
 
 [[bin]]
 name = "seed-rust"
-path = "src/main.rs"
+path = "main.rs"
 
 [dependencies]
 protocol = { path = "../protocol" }

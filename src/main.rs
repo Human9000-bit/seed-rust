@@ -19,7 +19,7 @@ use actix_web::{HttpRequest, HttpResponse, get, web};
 use anyhow::Result;
 use infrastructure::database::PostgresDatabase;
 use infrastructure::websocket::WebSocketService;
-use seed::entity::websocket::{WebSocketConnection, WebSocketManager};
+use protocol::entity::websocket::{WebSocketConnection, WebSocketManager};
 use use_case::messages::MessagesUseCase;
 
 /// Main application entry point
