@@ -67,7 +67,17 @@ impl WebSocketManager {
     /// Creates a new empty WebSocketManager instance.
     ///
     /// Initializes the connection tracking maps and message queues with no entries.
-    pub fn new(connections: DashMap<Arc<WebSocketConnection>, DashSet<String>>, chats: DashMap<String, DashSet<Arc<WebSocketConnection>>>, message_queues: DashMap<String, (flume::Sender<ConnectedMessage>, flume::Receiver<ConnectedMessage>)>) -> Self {
+    pub fn new(
+        connections: DashMap<Arc<WebSocketConnection>, DashSet<String>>,
+        chats: DashMap<String, DashSet<Arc<WebSocketConnection>>>,
+        message_queues: DashMap<
+            String,
+            (
+                flume::Sender<ConnectedMessage>,
+                flume::Receiver<ConnectedMessage>,
+            ),
+        >,
+    ) -> Self {
         Self {
             connections,
             chats,
@@ -139,6 +149,7 @@ impl Hash for WebSocketConnection {
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 mod tests {
     use super::*;
 
