@@ -1,4 +1,4 @@
-use crate::base64::{decode_base64, encode_base64};
+use misc::base64::{decode_base64, encode_base64};
 use anyhow::{Result, anyhow};
 use base64::prelude::*;
 use log::{error, warn};

@@ -3,15 +3,10 @@
 
 // In the name of the Father, and in the name of the Son, and in the name of the Holy Spirit. Amen.
 
-/// External crates for logging functionality
-#[macro_use]
-extern crate log;
-extern crate pretty_env_logger;
-
-mod base64;
-mod infrastructure;
-mod tls;
-mod use_case;
+// /// External crates for logging functionality
+// #[macro_use]
+// extern crate log;
+// extern crate pretty_env_logger;
 
 use actix_web::web::Data;
 use actix_web::{HttpRequest, HttpResponse, get, web};
@@ -40,7 +35,7 @@ async fn main() -> Result<()> {
     pretty_env_logger::init();
 
     // Load TLS configuration for secure connections
-    let tls_config = tls::load_rustls_config()?;
+    let tls_config = misc::tls::load_rustls_config()?;
 
     // Get the server port from environment variables or use default 8080
     let port = match std::env::var("PORT") {
@@ -103,7 +98,7 @@ async fn accept_websocket_connection(
 ) -> actix_web::Result<HttpResponse> {
     // Create a new WebSocket connection from the request
     let (response, conn, stream) = WebSocketConnection::new(&req, payload)?;
-    debug!("New websocket connection");
+    log::debug!("New websocket connection");
 
     // Process the connection in a new task
     actix_web::rt::spawn(async move { websocket_service.handle_connection(conn, stream).await });

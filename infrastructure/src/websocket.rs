@@ -3,10 +3,8 @@ use futures::StreamExt;
 use log::debug;
 use std::{ops::ControlFlow, sync::Arc};
 
-use crate::{
-    base64::decode_base64,
-    use_case::{messages::MessagesUseCase, websocket::WebSocketUseCase},
-};
+use misc::base64::decode_base64;
+use use_case::{messages::MessagesUseCase, websocket::WebSocketUseCase};
 
 use traits::{
     message::{MessagesDB, MessagesRepository},

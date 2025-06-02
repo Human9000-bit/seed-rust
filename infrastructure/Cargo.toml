@@ -1,0 +1,19 @@
+[package]
+name = "infrastructure"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+protocol = { path = "../protocol" }
+misc = { path = "../misc" }
+traits = { path = "../traits" }
+use_case = { path = "../use_case" }
+
+anyhow.workspace = true
+actix-ws.workspace = true
+serde_json.workspace = true
+futures.workspace = true
+log.workspace = true
+base64.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
