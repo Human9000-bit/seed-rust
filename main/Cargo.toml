@@ -7,7 +7,7 @@ authors.workspace = true
 
 [[bin]]
 name = "seed-rust"
-path = "main.rs"
+path = "src/main.rs"
 
 [dependencies]
 protocol = { path = "../protocol" }
