@@ -2,8 +2,10 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
+use futures::SinkExt;
 use misc::base64::decode_base64;
 
+use tokio_tungstenite::tungstenite::Message;
 use traits::message::{MessagesDB, MessagesRepository};
 
 use protocol::entity::{
@@ -55,7 +57,11 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
 
         let mut session = connection.session.lock().await;
 
-        session.text(serde_json::to_string(&outgoing)?).await?;
+        let message = serde_json::to_string(&outgoing)?;
+        let message = Message::Text(message.into());
+
+        session.send(message).await?;
+        
         Ok(())
     }
 
@@ -78,7 +84,10 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
 
         let mut session = connection.session.lock().await;
 
-        session.text(serde_json::to_string(&outgoing)?).await?;
+        let message = serde_json::to_string(&outgoing)?;
+        let message = Message::Text(message.into());
+
+        session.send(message).await?;
 
         Ok(())
     }
@@ -99,7 +108,9 @@ impl<T: MessagesDB> MessagesRepository for MessagesUseCase<T> {
 
         let mut session = connection.session.lock().await;
 
-        session.text(serde_json::to_string(&outgoing)?).await?;
+        let message = serde_json::to_string(&outgoing)?;
+        let message = Message::Text(message.into());
+        session.send(message).await?;
 
         Ok(())
     }

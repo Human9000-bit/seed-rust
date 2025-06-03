@@ -13,8 +13,6 @@ lto = true
 codegen-units = 1
 
 [workspace.dependencies]
-actix-web = { version = "4.9.0", features = ["rustls-0_23"] }
-actix-ws = "0.3.0"
 sqlx = { version = "0.8.2", features = [
     "sqlx-postgres",
     "postgres",
@@ -34,3 +32,5 @@ actix = "0.13.5"
 rustls-pemfile = "2.2.0"
 rustls = "0.23"
 dashmap = { version = "6.1.0", features = ["inline"] }
+tokio-tungstenite = "0.26.2"
+tokio = {version = "1.45.1", features = ["full"]}

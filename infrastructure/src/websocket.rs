@@ -1,4 +1,4 @@
-use actix_ws::Message;
+use tokio_tungstenite::tungstenite::Message;
 use futures::StreamExt;
 use log::debug;
 use std::{ops::ControlFlow, sync::Arc};
@@ -63,11 +63,9 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
     /// # Arguments
     ///
     /// * `connection` - The WebSocket connection to handle
-    /// * `stream` - The message stream from the WebSocket connection
     pub async fn handle_connection(
         &self,
-        connection: WebSocketConnection,
-        mut stream: actix_ws::MessageStream,
+        connection: WebSocketConnection
     ) {
         let connection = Arc::new(connection);
         let manager = self.manager.clone();
@@ -80,6 +78,8 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
             "Starting to handle websocket messages for connection: {}",
             connection.id
         );
+        
+        let mut stream = connection.session.lock().await;
 
         // Process each message in the stream until connection closes
         while let Some(Ok(msg)) = stream.next().await {

@@ -215,7 +215,13 @@ impl<T: MessagesRepository> WebsocketRepository for WebSocketUseCase<T> {
     /// * `connection` - Connection that is disconnecting
     async fn disconnect(&self, ws: Arc<WebSocketManager>, connection: Arc<WebSocketConnection>) {
         // Close the WebSocket session
-        let _ = connection.session.lock().await.to_owned().close(None).await;
+        let _ = connection
+            .session
+            .lock()
+            .await
+            .close(None)
+            .await
+            .map_err(|e| log::error!("Error closing WebSocket session: {}", e));
 
         // Unsubscribe from all chats this connection was subscribed to
         if let Some(chat_id) = ws.connections.get(&connection) {

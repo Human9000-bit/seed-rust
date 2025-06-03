@@ -7,13 +7,21 @@
 extern crate log;
 extern crate pretty_env_logger;
 
-use actix_web::web::Data;
-use actix_web::{HttpRequest, HttpResponse, get, web};
+use std::sync::Arc;
+
 use anyhow::Result;
 use infrastructure::database::PostgresDatabase;
 use infrastructure::websocket::WebSocketService;
+use log::error;
 use protocol::entity::websocket::{WebSocketConnection, WebSocketManager};
-use use_case::messages::MessagesUseCase;
+use tokio_tungstenite::{
+    accept_hdr_async,
+    tungstenite::{
+        handshake::server::{Request, Response},
+        http::{StatusCode},
+    },
+};
+use traits::message::{MessagesDB, MessagesRepository};
 
 /// Main application entry point
 ///
@@ -28,19 +36,18 @@ use use_case::messages::MessagesUseCase;
 /// # Returns
 ///
 /// Returns a `Result` that indicates whether the application started successfully
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> Result<()> {
     // Initialize the logging system
     pretty_env_logger::init();
-
-    // Load TLS configuration for secure connections
-    let tls_config = misc::tls::load_rustls_config()?;
 
     // Get the server port from environment variables or use default 8080
     let port = match std::env::var("PORT") {
         Ok(port_str) => port_str.parse().unwrap_or(8080),
         Err(_) => 8080,
     };
+
+    let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}"));
 
     // Initialize database connection pool
     let pg_pool = PostgresDatabase::new().await?;
@@ -52,56 +59,39 @@ async fn main() -> Result<()> {
     let websocket_manager = WebSocketManager::default();
 
     // Create the WebSocket service to handle connections
-    let websocket_service = infrastructure::websocket::WebSocketService::new(
+    let websocket_service = Arc::new(infrastructure::websocket::WebSocketService::new(
         websocket_manager,
         websocket_use_case,
         messages_use_case,
-    );
+    ));
 
-    // Configure and start the HTTP server
-    let server = actix_web::HttpServer::new(move || {
-        actix_web::App::new()
-            .app_data(Data::new(websocket_service.clone()))
-            .service(accept_websocket_connection)
-    })
-    .bind_rustls_0_23(format!("127.0.0.1:{port}"), tls_config)?
-    .run();
-
-    // Wait for the server to complete
-    server.await?;
+    let listener = listener.await?;
+    while let Ok((stream, _)) = listener.accept().await {
+        tokio::spawn(handle_handshake(stream, websocket_service.clone()));
+    }
 
     Ok(())
 }
 
-/// WebSocket connection handler endpoint
-///
-/// This endpoint handles incoming WebSocket connection requests and passes them
-/// to the WebSocket service for processing.
-///
-/// # Parameters
-///
-/// * `req` - The HTTP request containing WebSocket upgrade information
-/// * `payload` - The request payload stream
-/// * `websocket_service` - The WebSocket service that will handle the connection
-///
-/// # Returns
-///
-/// Returns an HTTP response that completes the WebSocket handshake
-#[get("/ws")]
-async fn accept_websocket_connection(
-    req: HttpRequest,
-    payload: web::Payload,
-    websocket_service: web::Data<
-        WebSocketService<MessagesUseCase<PostgresDatabase>, PostgresDatabase>,
-    >,
-) -> actix_web::Result<HttpResponse> {
-    // Create a new WebSocket connection from the request
-    let (response, conn, stream) = WebSocketConnection::new(&req, payload)?;
-    log::debug!("New websocket connection");
+async fn handle_handshake<MR: MessagesRepository + Clone, DB: MessagesDB + Clone>(
+    stream: tokio::net::TcpStream,
+    ws_service: Arc<WebSocketService<MR, DB>>,
+) {
+    let callback = |req: &Request, resp: Response| {
+        if req.uri().path() != "/ws" {
+            let response = Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(None::<String>).unwrap();
+            return Err(response)
+        }
+        Ok(resp)
+    };
 
-    // Process the connection in a new task
-    actix_web::rt::spawn(async move { websocket_service.handle_connection(conn, stream).await });
-
-    // Return the WebSocket handshake response
-    Ok(response)
+    match accept_hdr_async(stream, callback).await {
+        Ok(ws_stream) => {
+            let connection = WebSocketConnection::new(ws_stream);
+            ws_service.handle_connection(connection).await;
+        }
+        Err(err) => error!("failed to accept connection: {err}"),
+    }
 }
