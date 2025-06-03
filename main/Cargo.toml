@@ -16,7 +16,8 @@ infrastructure = { path = "../infrastructure" }
 use_case = { path = "../use_case" }
 misc = { path = "../misc" }
 
-actix-web.workspace = true
 anyhow.workspace = true
 pretty_env_logger.workspace = true
 log.workspace = true
+tokio.workspace = true
+tokio-tungstenite.workspace = true

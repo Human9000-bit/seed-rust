@@ -6,9 +6,9 @@ use std::{
 use dashmap::{DashMap, DashSet};
 use futures::lock::Mutex;
 
-use actix_web::{HttpRequest, HttpResponse, web::Payload};
-use actix_ws::{MessageStream, Session};
 use serde::{Deserialize, Serialize};
+use tokio::net::TcpStream;
+use tokio_tungstenite::WebSocketStream;
 use uuid::Uuid;
 
 use super::message::IncomeMessage;
@@ -90,13 +90,12 @@ impl WebSocketManager {
 ///
 /// Wraps both the WebSocket session for sending messages and a unique identifier
 /// to track this specific connection throughout the system.
-#[derive(Clone)]
 pub struct WebSocketConnection {
     /// Unique identifier for this connection
     pub id: Uuid,
 
     /// The WebSocket session wrapped in Arc<Mutex<>> for thread-safe access
-    pub session: Arc<Mutex<Session>>,
+    pub session: Mutex<WebSocketStream<TcpStream>>,
 }
 
 impl WebSocketConnection {
@@ -108,8 +107,7 @@ impl WebSocketConnection {
     ///
     /// # Arguments
     ///
-    /// * `req` - The HTTP request triggering the WebSocket connection
-    /// * `body` - The request payload
+    /// * `connection` - The WebSocket connection object
     ///
     /// # Returns
     ///
@@ -122,15 +120,12 @@ impl WebSocketConnection {
     ///
     /// Returns an actix_web::Error if the WebSocket handshake fails
     pub fn new(
-        req: &HttpRequest,
-        body: Payload,
-    ) -> std::result::Result<(HttpResponse, Self, MessageStream), actix_web::Error> {
-        let (response, session, stream) = actix_ws::handle(req, body)?;
-        let wsconn = WebSocketConnection {
-            id: Uuid::new_v4(),
-            session: Arc::new(Mutex::new(session)),
-        };
-        Ok((response, wsconn, stream))
+        connection: WebSocketStream<TcpStream>,
+    ) -> Self {
+        let uuid = uuid::Uuid::new_v4();
+        let session = Mutex::new(connection);
+        
+        Self { id: uuid, session }
     }
 }
 
