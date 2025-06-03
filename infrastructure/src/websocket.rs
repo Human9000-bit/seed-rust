@@ -1,7 +1,7 @@
-use tokio_tungstenite::tungstenite::Message;
 use futures::StreamExt;
 use log::debug;
 use std::{ops::ControlFlow, sync::Arc};
+use tokio_tungstenite::tungstenite::Message;
 
 use misc::base64::decode_base64;
 use use_case::{messages::MessagesUseCase, websocket::WebSocketUseCase};
@@ -63,10 +63,7 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
     /// # Arguments
     ///
     /// * `connection` - The WebSocket connection to handle
-    pub async fn handle_connection(
-        &self,
-        connection: WebSocketConnection
-    ) {
+    pub async fn handle_connection(&self, connection: WebSocketConnection) {
         let connection = Arc::new(connection);
         let manager = self.manager.clone();
         let websocket_use_case = self.websocket_use_case.clone();
@@ -78,7 +75,7 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
             "Starting to handle websocket messages for connection: {}",
             connection.id
         );
-        
+
         let mut stream = connection.session.lock().await;
 
         // Process each message in the stream until connection closes
@@ -144,7 +141,7 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
         websocket_use_case: &WebSocketUseCase<MR>,
         messages_use_case: &MessagesUseCase<DB>,
     ) -> ControlFlow<()> {
-        match incoming.clone() {
+        match &incoming {
             IncomeMessage::Ping => {
                 // Handle ping messages by sending a positive status response
                 let _ = messages_use_case.status_response(connection, true).await;
@@ -159,7 +156,7 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
                 // Create a connected message to send
                 let message = entity::websocket::ConnectedMessage {
                     connection: connection.clone(),
-                    message: incoming,
+                    message: incoming.clone(),
                 };
 
                 // Check if there are subscribers for this chat
@@ -168,18 +165,16 @@ impl<MR: MessagesRepository + Clone, DB: MessagesDB + Clone> WebSocketService<MR
                 if contains_key {
                     // If there are subscribers, add the message to the queue
                     if let Some(queue) = manager.message_queues.get_mut(&msg.chat_id) {
-                        let _ = queue.0.send(message);
+                        let _ = queue.0.send(message).map_err(|e| log::error!("{e}"));
                         log::info!("Message has been successfully added to the queue");
                     }
 
                     // Send a positive status response
-                    let _ = messages_use_case
-                        .status_response(connection.clone(), true)
-                        .await;
+                    let _ = messages_use_case.status_response(connection, true).await;
                 } else {
                     // If no subscribers, store the message in the database
                     log::info!("There is no subscribers to receive message in the queue");
-                    if let Err(err) = messages_use_case.db.insert_message(msg).await {
+                    if let Err(err) = messages_use_case.db.insert_message(msg.clone()).await {
                         log::info!("Error inserting message into database: {}", err);
                         let _ = messages_use_case
                             .status_response(connection.clone(), false)
