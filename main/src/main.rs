@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![allow(dead_code)]
 
 // In the name of the Father, and in the name of the Son, and in the name of the Holy Spirit. Amen.
 
