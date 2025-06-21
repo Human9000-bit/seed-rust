@@ -1,7 +1,7 @@
-use misc::base64::{decode_base64, encode_base64};
 use anyhow::{Result, anyhow};
 use base64::prelude::*;
 use log::{error, warn};
+use misc::base64::{decode_base64, encode_base64};
 use protocol::{
     entity::message::{self, OutcomeMessage},
     error::SeedError,
@@ -59,6 +59,18 @@ impl PostgresDatabase {
             .connect(&connection_url)
             .await
             .inspect_err(|e| error!("failed to connect to postgres pool: {e}"))?;
+
+        sqlx::query!(
+            r#"
+            CREATE TABLE IF NOT EXISTS messages (
+                nonce BIGINT,
+                chat_id TEXT,
+                signature TEXT,
+                content BYTEA,
+                content_iv BYTEA
+            );
+            "#
+        ).execute(&pool).await?;
 
         Ok(Self { db: pool })
     }
